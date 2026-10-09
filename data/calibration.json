@@ -1,0 +1,56 @@
+{
+  "version": "1.0",
+  "timestamp": "2026-10-09T23:07:27.064074",
+  "device": {
+    "device_index": 1,
+    "sample_rate": 16000,
+    "name": "[1] Microphone Array (Realtek(R) Au | MME | 2 ch @ 44100Hz (Default)"
+  },
+  "config": {
+    "samplerate": 16000,
+    "blocksize": 512,
+    "amplitude_floor": 0.03369,
+    "attack_ratio_threshold": 2.2,
+    "centroid_max_hz": 3200.0,
+    "high_low_ratio_max": 0.573,
+    "refractory_sec": 0.18,
+    "ema_alpha": 0.1,
+    "warmup_blocks": 5,
+    "min_confidence": 0.5,
+    "classifier_weights": [
+      1.2128881099803857,
+      0.5947494279151482,
+      -0.10836738765869701,
+      -0.1526133243291358
+    ],
+    "classifier_bias": 1.2078,
+    "feature_means": [
+      0.27354864406779655,
+      795.5016949152543,
+      2754.7033898305085,
+      0.32518644067796615
+    ],
+    "feature_scales": [
+      0.17803385048019807,
+      856.4636949020448,
+      772.8632020875697,
+      0.2872770749333237
+    ]
+  },
+  "summary": {
+    "n_taps": 40,
+    "n_negatives": 19,
+    "ambient_noise_ceiling": 0.00834,
+    "amplitude_floor": 0.03369,
+    "attack_ratio_threshold": 2.2,
+    "centroid_max_hz": 3200.0,
+    "high_low_ratio_max": 0.573,
+    "classifier_fit": true,
+    "training_accuracy": 0.949,
+    "timestamp": "2026-10-09T23:07:27.063075",
+    "live_taps_added": 1,
+    "live_negatives_added": 1,
+    "total_taps": 40,
+    "total_negatives": 19
+  }
+}

@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+
+# .NET / C# build outputs and executables
+**/bin/
+**/obj/
+**/publish/
+bin/
+obj/
+publish/
+*.exe
+*.dll
+*.pdb
+*.runtimeconfig.json
+*.deps.json
+*.csproj.user
+
+# IDE and Editor files
+.vs/
+.idea/
+.vscode/
+*.swp
+*.swo

@@ -1,0 +1,4 @@
+# Minimal, lightweight dependencies for Tapp Hit Detection
+numpy>=1.24.0
+sounddevice>=0.5.0
+scipy>=1.10.0

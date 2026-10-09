@@ -1,0 +1,7 @@
+{
+  "enabled": true,
+  "single_tap_action": "Play / Pause Media",
+  "double_tap_action": "Mute / Unmute Volume",
+  "triple_tap_action": "Mute / Unmute Volume",
+  "double_tap_timeout_sec": 0.38
+}
