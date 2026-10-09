@@ -20,16 +20,24 @@ public class ActionDispatcher
     private const byte VK_MEDIA_PREV_TRACK = 0xB1;
     private const byte VK_MEDIA_PLAY_PAUSE = 0xB3;
     private const byte VK_SNAPSHOT = 0x2C;
+    private const byte VK_LEFT = 0x25;
+    private const byte VK_UP = 0x26;
+    private const byte VK_RIGHT = 0x27;
+    private const byte VK_DOWN = 0x28;
     private const uint KEYEVENTF_KEYUP = 0x0002;
 
     [DllImport("user32.dll")]
     private static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, UIntPtr dwExtraInfo);
 
     public static readonly string[] AvailableActions = {
+        "Play / Pause Media",
+        "Next Slide (Right Arrow)",
+        "Previous Slide (Left Arrow)",
+        "Up Arrow",
+        "Down Arrow",
         "Volume Up",
         "Volume Down",
         "Mute / Unmute Volume",
-        "Play / Pause Media",
         "Next Track",
         "Previous Track",
         "Screenshot (PrintScreen)",
@@ -37,9 +45,9 @@ public class ActionDispatcher
     };
 
     public bool Enabled { get; set; } = true;
-    public string SingleTapAction { get; set; } = "Volume Up";
-    public string DoubleTapAction { get; set; } = "Volume Down";
-    public string TripleTapAction { get; set; } = "Mute / Unmute Volume";
+    public string SingleTapAction { get; set; } = "Play / Pause Media";
+    public string DoubleTapAction { get; set; } = "None (Detection Only)";
+    public string TripleTapAction { get; set; } = "None (Detection Only)";
     public float DoubleTapTimeoutSec { get; set; } = 0.38f;
 
     private readonly List<double> _tapChain = new List<double>();
@@ -57,6 +65,23 @@ public class ActionDispatcher
     {
         switch (actionName)
         {
+            case "Play / Pause Media":
+                SendKey(VK_MEDIA_PLAY_PAUSE);
+                return true;
+            case "Next Slide (Right Arrow)":
+            case "Right Arrow":
+                SendKey(VK_RIGHT);
+                return true;
+            case "Previous Slide (Left Arrow)":
+            case "Left Arrow":
+                SendKey(VK_LEFT);
+                return true;
+            case "Up Arrow":
+                SendKey(VK_UP);
+                return true;
+            case "Down Arrow":
+                SendKey(VK_DOWN);
+                return true;
             case "Volume Up":
                 SendKey(VK_VOLUME_UP);
                 return true;
@@ -65,9 +90,6 @@ public class ActionDispatcher
                 return true;
             case "Mute / Unmute Volume":
                 SendKey(VK_VOLUME_MUTE);
-                return true;
-            case "Play / Pause Media":
-                SendKey(VK_MEDIA_PLAY_PAUSE);
                 return true;
             case "Next Track":
                 SendKey(VK_MEDIA_NEXT_TRACK);

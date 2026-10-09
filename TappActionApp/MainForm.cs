@@ -483,10 +483,14 @@ public class MainForm : Form
 
         switch (action)
         {
+            case "Play / Pause Media": return "Test Play/Pause";
+            case "Next Slide (Right Arrow)": return "Test Next Slide";
+            case "Previous Slide (Left Arrow)": return "Test Prev Slide";
+            case "Up Arrow": return "Test Up Arrow";
+            case "Down Arrow": return "Test Down Arrow";
             case "Volume Up": return "Test Vol Up";
             case "Volume Down": return "Test Vol Down";
             case "Mute / Unmute Volume": return "Test Mute";
-            case "Play / Pause Media": return "Test Play/Pause";
             case "Next Track": return "Test Next Track";
             case "Previous Track": return "Test Prev Track";
             case "Screenshot (PrintScreen)": return "Test Screenshot";

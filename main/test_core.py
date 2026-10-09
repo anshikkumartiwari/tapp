@@ -2,8 +2,17 @@
 Tests feature extraction, segmentation, streaming detector, calibration, and metrics.
 """
 
+import os
 from pathlib import Path
+import sys
 import unittest
+
+# Ensure project repository root is on sys.path and set working directory to repo root
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+os.chdir(str(REPO_ROOT))
+
 import numpy as np
 
 from tapp_app.features import (
@@ -285,10 +294,33 @@ class TestLiveGroundTruthAndRecalibration(unittest.TestCase):
 
 
 class TestActions(unittest.TestCase):
+    def test_default_actions(self):
+        from tapp_app.actions import ActionSettings
+
+        s = ActionSettings()
+        self.assertEqual(s.single_tap_action, "Play / Pause Media")
+        self.assertEqual(s.double_tap_action, "None (Detection Only)")
+        self.assertEqual(s.triple_tap_action, "None (Detection Only)")
+
+    def test_arrow_keys_and_slide_actions(self):
+        from tapp_app.actions import AVAILABLE_ACTIONS, execute_action
+
+        self.assertIn("Next Slide (Right Arrow)", AVAILABLE_ACTIONS)
+        self.assertIn("Previous Slide (Left Arrow)", AVAILABLE_ACTIONS)
+        self.assertIn("Up Arrow", AVAILABLE_ACTIONS)
+        self.assertIn("Down Arrow", AVAILABLE_ACTIONS)
+
+        # Execution should succeed without error
+        self.assertTrue(execute_action("Next Slide (Right Arrow)"))
+        self.assertTrue(execute_action("Previous Slide (Left Arrow)"))
+        self.assertTrue(execute_action("Up Arrow"))
+        self.assertTrue(execute_action("Down Arrow"))
+
     def test_instant_single_tap_when_multitap_disabled(self):
         from tapp_app.actions import ActionSettings, GestureActionManager, is_action_configured
 
         self.assertTrue(is_action_configured("Volume Up"))
+        self.assertTrue(is_action_configured("Next Slide (Right Arrow)"))
         self.assertFalse(is_action_configured("None (Detection Only)"))
         self.assertFalse(is_action_configured("Disabled"))
         self.assertFalse(is_action_configured(""))
@@ -299,7 +331,7 @@ class TestActions(unittest.TestCase):
             fired.append((gesture, action))
 
         settings = ActionSettings(
-            single_tap_action="Volume Up",
+            single_tap_action="Play / Pause Media",
             double_tap_action="None (Detection Only)",
             triple_tap_action="None (Detection Only)",
             double_tap_timeout_sec=0.38,
@@ -309,12 +341,12 @@ class TestActions(unittest.TestCase):
         # Triggering on_hit_detected should immediately fire single tap without waiting on timer
         manager.on_hit_detected()
         self.assertEqual(len(fired), 1)
-        self.assertEqual(fired[0], ("Single Tap", "Volume Up"))
+        self.assertEqual(fired[0], ("Single Tap", "Play / Pause Media"))
 
         # Triggering second hit immediately fires single tap again
         manager.on_hit_detected()
         self.assertEqual(len(fired), 2)
-        self.assertEqual(fired[1], ("Single Tap", "Volume Up"))
+        self.assertEqual(fired[1], ("Single Tap", "Play / Pause Media"))
 
 
 if __name__ == "__main__":

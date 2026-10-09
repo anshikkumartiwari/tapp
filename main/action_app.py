@@ -5,12 +5,19 @@ and dispatches native Windows multimedia actions (Volume Up, Volume Down, Mute, 
 Clean white UI (#FFFFFF background, #000000 text), low resource usage.
 """
 
-from dataclasses import asdict
-import json
 import os
 from pathlib import Path
-import queue
 import sys
+
+# Ensure project repository root is on sys.path and set working directory to repo root
+REPO_ROOT = Path(__file__).resolve().parent.parent
+if str(REPO_ROOT) not in sys.path:
+    sys.path.insert(0, str(REPO_ROOT))
+os.chdir(str(REPO_ROOT))
+
+from dataclasses import asdict
+import json
+import queue
 import threading
 import time
 import tkinter as tk
@@ -378,10 +385,14 @@ class TappActionApp:
         if not action or action.lower().startswith("none"):
             return "Test (None)"
         label_map = {
+            "Play / Pause Media": "Test Play/Pause",
+            "Next Slide (Right Arrow)": "Test Next Slide",
+            "Previous Slide (Left Arrow)": "Test Prev Slide",
+            "Up Arrow": "Test Up Arrow",
+            "Down Arrow": "Test Down Arrow",
             "Volume Up": "Test Vol Up",
             "Volume Down": "Test Vol Down",
             "Mute / Unmute Volume": "Test Mute",
-            "Play / Pause Media": "Test Play/Pause",
             "Next Track": "Test Next Track",
             "Previous Track": "Test Prev Track",
             "Screenshot (PrintScreen)": "Test Screenshot",

@@ -51,7 +51,11 @@ if "%PYTHON_EXE%"=="" (
     exit /b 1
 )
 
-"%PYTHON_EXE%" main.py
+if exist "main\main.py" (
+    "%PYTHON_EXE%" main\main.py
+) else (
+    "%PYTHON_EXE%" main.py
+)
 
 if %ERRORLEVEL% neq 0 (
     echo.

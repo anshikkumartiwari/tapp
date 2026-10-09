@@ -64,7 +64,11 @@ if %ERRORLEVEL% neq 0 (
 REM 2. Install dependencies
 echo.
 echo [*] Installing dependencies (numpy, sounddevice, scipy)...
-"%PYTHON_EXE%" -m pip install -r requirements.txt
+if exist "main\requirements.txt" (
+    "%PYTHON_EXE%" -m pip install -r main\requirements.txt
+) else (
+    "%PYTHON_EXE%" -m pip install -r requirements.txt
+)
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] Failed to install requirements.
     pause
@@ -74,7 +78,11 @@ if %ERRORLEVEL% neq 0 (
 REM 3. Run self-tests
 echo.
 echo [*] Running automated tests...
-"%PYTHON_EXE%" test_core.py
+if exist "main\test_core.py" (
+    "%PYTHON_EXE%" main\test_core.py
+) else (
+    "%PYTHON_EXE%" test_core.py
+)
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] Unit tests failed.
     pause

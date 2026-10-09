@@ -23,6 +23,10 @@ VK_MEDIA_NEXT_TRACK = 0xB0
 VK_MEDIA_PREV_TRACK = 0xB1
 VK_MEDIA_PLAY_PAUSE = 0xB3
 VK_SNAPSHOT = 0x2C
+VK_LEFT = 0x25
+VK_UP = 0x26
+VK_RIGHT = 0x27
+VK_DOWN = 0x28
 KEYEVENTF_KEYUP = 0x0002
 
 
@@ -35,10 +39,14 @@ def send_windows_vk(vk_code: int):
 
 
 AVAILABLE_ACTIONS = [
+    "Play / Pause Media",
+    "Next Slide (Right Arrow)",
+    "Previous Slide (Left Arrow)",
+    "Up Arrow",
+    "Down Arrow",
     "Volume Up",
     "Volume Down",
     "Mute / Unmute Volume",
-    "Play / Pause Media",
     "Next Track",
     "Previous Track",
     "Screenshot (PrintScreen)",
@@ -48,7 +56,22 @@ AVAILABLE_ACTIONS = [
 
 def execute_action(action_name: str) -> bool:
     """Execute the configured action on Windows."""
-    if action_name == "Volume Up":
+    if action_name == "Play / Pause Media":
+        send_windows_vk(VK_MEDIA_PLAY_PAUSE)
+        return True
+    elif action_name in ("Next Slide (Right Arrow)", "Right Arrow"):
+        send_windows_vk(VK_RIGHT)
+        return True
+    elif action_name in ("Previous Slide (Left Arrow)", "Left Arrow"):
+        send_windows_vk(VK_LEFT)
+        return True
+    elif action_name == "Up Arrow":
+        send_windows_vk(VK_UP)
+        return True
+    elif action_name == "Down Arrow":
+        send_windows_vk(VK_DOWN)
+        return True
+    elif action_name == "Volume Up":
         send_windows_vk(VK_VOLUME_UP)
         return True
     elif action_name == "Volume Down":
@@ -56,9 +79,6 @@ def execute_action(action_name: str) -> bool:
         return True
     elif action_name == "Mute / Unmute Volume":
         send_windows_vk(VK_VOLUME_MUTE)
-        return True
-    elif action_name == "Play / Pause Media":
-        send_windows_vk(VK_MEDIA_PLAY_PAUSE)
         return True
     elif action_name == "Next Track":
         send_windows_vk(VK_MEDIA_NEXT_TRACK)
@@ -77,9 +97,9 @@ def execute_action(action_name: str) -> bool:
 @dataclass
 class ActionSettings:
     enabled: bool = True
-    single_tap_action: str = "Volume Up"
-    double_tap_action: str = "Volume Down"
-    triple_tap_action: str = "Mute / Unmute Volume"
+    single_tap_action: str = "Play / Pause Media"
+    double_tap_action: str = "None (Detection Only)"
+    triple_tap_action: str = "None (Detection Only)"
     double_tap_timeout_sec: float = 0.38  # max interval to wait for a 2nd tap
 
     def to_dict(self) -> Dict:

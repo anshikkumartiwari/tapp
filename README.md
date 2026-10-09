@@ -20,17 +20,10 @@ Run the guided 5-step wizard to tune microphone sensitivity for your specific ch
 run.bat
 ```
 - Step 1: Check microphone and live oscilloscope
-- Step 2: Sample room background noise (10s)
-- Step 3: Record ~30 deliberate palm-rest taps
-- Step 4: Sample typing and trackpad clicks for rejection (30s)
-- Step 5: Save calibration and click **[Build Standalone tapp.exe]** (with 1-click Desktop shortcut)
-
+- Step 2: Follow the app's navigation / instructions to caliberate the app for your device and environment.
+- Step 3: Save calibration and click **[Build Standalone tapp.exe]**  <--- now you only need this file only (< 200 Kb)
 ### Step 3: Daily Use (Lightweight Background Runner)
-Run the lightweight native app anytime:
-```cmd
-tapp.bat
-```
-*(or double-click `tapp.exe` directly on your Desktop / taskbar)*
+Double-click `tapp.exe` directly. Pin to Task Bar
 
 ---
 
@@ -38,8 +31,8 @@ tapp.bat
 
 | Gesture | Default Action |
 | :--- | :--- |
-| **Single Tap** | Volume Up |
-| **Double Tap** | Volume Down |
-| **Triple Tap** | Mute / Unmute Volume |
+| **Single Tap** | Play/Pause |
+| **Double Tap** | None |
+| **Triple Tap** | None |
 
 *Actions and sensitivity thresholds can be customized in the app or via `data/actions_config.json`.*
