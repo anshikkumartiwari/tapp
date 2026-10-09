@@ -1,6 +1,9 @@
 @echo off
 cd /d "%~dp0"
 
+REM Fix any corrupted or broken quotes in PATH
+set "PATH=%PATH:"=%"
+
 if not defined DOTNET_ROOT (
     if exist "%LOCALAPPDATA%\Microsoft\dotnet" (
         set "DOTNET_ROOT=%LOCALAPPDATA%\Microsoft\dotnet"
