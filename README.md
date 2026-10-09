@@ -4,6 +4,10 @@ A lightweight acoustic tap detection and action trigger tool for Windows laptops
 
 Tapp detects deliberate mechanical taps on your laptop's palm-rest chassis area using the built-in microphone, while rejecting false positives from keyboard typing, trackpad clicks, and ambient room noise. Detected tap gestures (single, double, or triple tap) are instantly mapped to custom Windows actions like volume control, media playback, or screenshots with low latency.
 
+## Demo
+
+![Tapp demo](main/asset/gifmake_com_1791584342071_280.gif)
+
 ---
 
 ## Quick Start (3 Steps)
