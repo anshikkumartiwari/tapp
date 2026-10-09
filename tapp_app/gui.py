@@ -862,21 +862,29 @@ class TappAppGUI:
     # -------------------------------------------------------------------------
 
     def _refresh_devices(self):
-        devices = list_input_devices()
-        names = [f"{d.index}: {d.name} ({d.host_api})" for d in devices]
+        devices, def_idx = list_input_devices()
+        names = [f"{d.index}: {d.name} ({d.hostapi_name})" for d in devices]
         if hasattr(self, "device_combo"):
             self.device_combo["values"] = names
             if names:
-                self.device_combo.current(0)
+                target_idx = 0
+                if def_idx is not None:
+                    for i, d in enumerate(devices):
+                        if d.index == def_idx:
+                            target_idx = i
+                            break
+                self.device_combo.current(target_idx)
                 self._on_device_selected(None)
 
     def _on_device_selected(self, _event):
         sel = self.device_combo.get()
         if not sel:
             return
-        idx = int(sel.split(":")[0])
-        self.audio_engine.select_device(idx)
-        self.audio_engine.start()
+        try:
+            idx = int(sel.split(":")[0])
+            self.audio_engine.start(device_index=idx)
+        except Exception:
+            pass
         if hasattr(self, "btn_audio_toggle"):
             self.btn_audio_toggle.config(text="Pause Audio")
 
