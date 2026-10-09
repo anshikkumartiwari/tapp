@@ -1,6 +1,6 @@
 {
   "version": "1.0",
-  "timestamp": "2026-10-10T01:48:31.543101",
+  "timestamp": "2026-10-10T01:57:30.219144",
   "device": {
     "device_index": 1,
     "sample_rate": 16000,
@@ -12,45 +12,45 @@
     "amplitude_floor": 0.03369,
     "attack_ratio_threshold": 2.2,
     "centroid_max_hz": 3200.0,
-    "high_low_ratio_max": 0.541,
+    "high_low_ratio_max": 0.539,
     "refractory_sec": 0.18,
     "ema_alpha": 0.1,
     "warmup_blocks": 5,
     "min_confidence": 0.5,
     "classifier_weights": [
-      1.2175483744787636,
-      0.515388896761826,
-      -0.3346584771264635,
-      -0.2923759094757436
+      1.2148674233146506,
+      0.5097479107661,
+      -0.3473941672636996,
+      -0.30194216582004596
     ],
-    "classifier_bias": 0.8312,
+    "classifier_bias": 0.8079,
     "feature_means": [
-      0.2522144444444444,
-      580.1185185185186,
-      2685.5246913580245,
-      0.37266666666666703
+      0.2508357831325301,
+      566.2,
+      2681.0542168674697,
+      0.37573493975903655
     ],
     "feature_scales": [
-      0.1755937946328977,
-      811.6088867777204,
-      952.3286412115401,
-      0.31532601197357724
+      0.17534567801999087,
+      806.6488382936411,
+      962.6050070463233,
+      0.3168085615680671
     ]
   },
   "summary": {
-    "n_taps": 51,
-    "n_negatives": 30,
-    "ambient_noise_ceiling": 0.00819,
+    "n_taps": 52,
+    "n_negatives": 31,
+    "ambient_noise_ceiling": 0.00801,
     "amplitude_floor": 0.03369,
     "attack_ratio_threshold": 2.2,
     "centroid_max_hz": 3200.0,
-    "high_low_ratio_max": 0.541,
+    "high_low_ratio_max": 0.539,
     "classifier_fit": true,
-    "training_accuracy": 0.951,
-    "timestamp": "2026-10-10T01:48:31.543101",
+    "training_accuracy": 0.952,
+    "timestamp": "2026-10-10T01:57:30.218144",
     "live_taps_added": 1,
     "live_negatives_added": 1,
-    "total_taps": 51,
-    "total_negatives": 30
+    "total_taps": 52,
+    "total_negatives": 31
   }
 }

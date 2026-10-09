@@ -337,7 +337,7 @@ class TappAppGUI:
         self.vu_label = tk.Label(vu_row, text="Peak: 0.000", font=FONT_MONO, bg=BG_COLOR, fg=FG_COLOR, width=14)
         self.vu_label.pack(side="right")
 
-        # Rolling Waveform & Spectrum
+        # Rolling Dual-Band Waveform
         self.wave_canvas = tk.Canvas(meter_card, bg=BG_COLOR, height=125, highlightthickness=1, highlightbackground=BORDER_COLOR)
         self.wave_canvas.pack(fill="both", expand=True, pady=(0, 4))
 
@@ -408,7 +408,7 @@ class TappAppGUI:
         self.step1_status_lbl.pack(anchor="w")
 
         # Visualizer box
-        vis_box = tk.LabelFrame(pad, text=" Live Spectrum & Waveform ", font=FONT_HEADING, bg=BG_COLOR, fg=FG_COLOR, padx=10, pady=8)
+        vis_box = tk.LabelFrame(pad, text=" Live Dual-Band Waveforms ", font=FONT_HEADING, bg=BG_COLOR, fg=FG_COLOR, padx=10, pady=8)
         vis_box.pack(fill="both", expand=True, pady=(0, 14))
 
         self.cal_canvas = tk.Canvas(vis_box, bg=BG_COLOR, height=110, highlightthickness=1, highlightbackground=BORDER_COLOR)
@@ -528,7 +528,7 @@ class TappAppGUI:
         self.step2_status_lbl.pack(anchor="w")
 
         # Visualizer box
-        vis_box = tk.LabelFrame(pad, text=" Live Spectrum & Waveform ", font=FONT_HEADING, bg=BG_COLOR, fg=FG_COLOR, padx=10, pady=8)
+        vis_box = tk.LabelFrame(pad, text=" Live Dual-Band Waveforms ", font=FONT_HEADING, bg=BG_COLOR, fg=FG_COLOR, padx=10, pady=8)
         vis_box.pack(fill="both", expand=True, pady=(0, 14))
 
         self.cal_canvas = tk.Canvas(vis_box, bg=BG_COLOR, height=110, highlightthickness=1, highlightbackground=BORDER_COLOR)
@@ -652,7 +652,7 @@ class TappAppGUI:
         self.step3_status_lbl.pack(anchor="w")
 
         # Visualizer box
-        vis_box = tk.LabelFrame(pad, text=" Live Spectrum & Waveform ", font=FONT_HEADING, bg=BG_COLOR, fg=FG_COLOR, padx=10, pady=8)
+        vis_box = tk.LabelFrame(pad, text=" Live Dual-Band Waveforms ", font=FONT_HEADING, bg=BG_COLOR, fg=FG_COLOR, padx=10, pady=8)
         vis_box.pack(fill="both", expand=True, pady=(0, 14))
 
         self.cal_canvas = tk.Canvas(vis_box, bg=BG_COLOR, height=110, highlightthickness=1, highlightbackground=BORDER_COLOR)
@@ -1545,8 +1545,8 @@ class TappAppGUI:
 
         self.root.after(40, self._ui_poll_loop)
 
-    def _render_dual_waveform_and_spectrum(self, canvas: tk.Canvas, status_lbl: Optional[tk.Label] = None):
-        """Render two smooth rolling time waveforms (Raw + Chassis Tap) and FFT Frequency Spectrum."""
+    def _render_dual_waveform(self, canvas: tk.Canvas, status_lbl: Optional[tk.Label] = None):
+        """Render two smooth rolling time waveforms (Raw Audio + Chassis Tap Vibration)."""
         try:
             canvas.delete("all")
             w = canvas.winfo_width()
@@ -1555,38 +1555,30 @@ class TappAppGUI:
                 return
 
             raw, chassis = self.audio_engine.get_dual_waveform_snapshot(0.70)
-            freqs, mag, dom_f, sc = self.audio_engine.get_spectrum_snapshot()
+            dom_f = getattr(self.audio_engine, "latest_dominant_freq", 0.0)
+            sc = getattr(self.audio_engine, "latest_centroid", 0.0)
             pk = self.audio_engine.latest_peak
 
-            # Layout: Left 64% is Oscilloscope (Dual Waves), Right 36% is Frequency Spectrum
-            osc_w = int(w * 0.64)
-            spec_x0 = osc_w + 2
-            spec_w = max(10, w - spec_x0 - 4)
-
-            # Center & division coordinates
             mid_y1 = h * 0.25
             mid_y2 = h * 0.75
             track_div_y = int(h * 0.50)
 
-            # Vertical divider between Oscilloscope and Spectrum
-            canvas.create_line(osc_w, 0, osc_w, h, fill=LIGHT_BORDER, width=1)
-
             # Horizontal divider between Wave 1 and Wave 2
-            canvas.create_line(0, track_div_y, osc_w, track_div_y, fill="#EEEEEE", dash=(2, 2))
+            canvas.create_line(0, track_div_y, w, track_div_y, fill="#EEEEEE", dash=(2, 2))
 
             # Dashed zero baselines for Wave 1 and Wave 2
-            canvas.create_line(0, mid_y1, osc_w, mid_y1, fill="#F2F2F2")
-            canvas.create_line(0, mid_y2, osc_w, mid_y2, fill="#F2F2F2")
+            canvas.create_line(0, mid_y1, w, mid_y1, fill="#F2F2F2")
+            canvas.create_line(0, mid_y2, w, mid_y2, fill="#F2F2F2")
 
             # Track titles
             canvas.create_text(8, 4, anchor="nw", text="WAVE 1: RAW MICROPHONE AUDIO", font=("Segoe UI", 7, "bold"), fill=MUTED_FG)
             canvas.create_text(8, track_div_y + 4, anchor="nw", text="WAVE 2: CHASSIS TAP (<350 Hz)", font=("Segoe UI", 7, "bold"), fill=MUTED_FG)
 
             # -------------------------------------------------------------
-            # Draw Rolling Time Waves (Wave 1 & Wave 2)
+            # Draw Rolling Time Waves across full width (Wave 1 & Wave 2)
             # -------------------------------------------------------------
             n_raw = len(raw)
-            if n_raw >= 32 and osc_w > 10:
+            if n_raw >= 32 and w > 10:
                 mx_raw = float(np.max(np.abs(raw)))
                 mx_ch = float(np.max(np.abs(chassis)))
 
@@ -1599,9 +1591,9 @@ class TappAppGUI:
                 pts1 = []
                 pts2 = []
 
-                for x in range(osc_w):
-                    s_idx = int(x * n_raw / osc_w)
-                    e_idx = min(n_raw, int((x + 1) * n_raw / osc_w) + 1)
+                for x in range(w):
+                    s_idx = int(x * n_raw / w)
+                    e_idx = min(n_raw, int((x + 1) * n_raw / w) + 1)
 
                     sub1 = raw[s_idx:e_idx]
                     val1 = float(np.mean(sub1)) if len(sub1) > 0 else 0.0
@@ -1619,44 +1611,6 @@ class TappAppGUI:
                     canvas.create_line(pts1, fill=FG_COLOR, width=1)
                 if len(pts2) >= 4:
                     canvas.create_line(pts2, fill=FG_COLOR, width=1.5)
-
-            # -------------------------------------------------------------
-            # Draw Frequency Spectrum (Right Section)
-            # -------------------------------------------------------------
-            canvas.create_text(spec_x0 + 6, 4, anchor="nw", text="SPECTRUM (0-2.5 kHz)", font=("Segoe UI", 7, "bold"), fill=MUTED_FG)
-
-            # Frequency grid marks: 250, 500, 1000, 2000 Hz
-            max_f = 2500.0
-            for grid_f, lbl in [(250, "250"), (500, "500"), (1000, "1k"), (2000, "2k")]:
-                gx = spec_x0 + int((grid_f / max_f) * spec_w)
-                if gx < w - 4:
-                    canvas.create_line(gx, 18, gx, h - 14, fill="#F2F2F2", dash=(1, 2))
-                    canvas.create_text(gx, h - 6, anchor="s", text=lbl, font=("Segoe UI", 6), fill="#999999")
-
-            # Spectrum curve
-            if len(freqs) > 0 and len(mag) > 0:
-                mask = freqs <= max_f
-                f_sub = freqs[mask]
-                m_sub = mag[mask]
-                mx_m = float(np.max(m_sub)) if len(m_sub) > 0 else 1.0
-                if mx_m < 1e-6:
-                    mx_m = 1.0
-
-                spec_pts = [spec_x0, h - 16]
-                for f_val, m_val in zip(f_sub, m_sub):
-                    sx = spec_x0 + (f_val / max_f) * spec_w
-                    sy = (h - 16) - (m_val / mx_m) * (h - 38)
-                    spec_pts.extend([sx, sy])
-                spec_pts.extend([spec_x0 + spec_w, h - 16])
-
-                if len(spec_pts) >= 4:
-                    canvas.create_line(spec_pts, fill=FG_COLOR, width=1.5)
-
-            # Dominant frequency cursor
-            if dom_f > 30 and dom_f <= max_f:
-                dom_x = spec_x0 + int((dom_f / max_f) * spec_w)
-                canvas.create_line(dom_x, 18, dom_x, h - 16, fill=FG_COLOR, width=1, dash=(2, 2))
-                canvas.create_text(dom_x, 14, anchor="s", text=f"{dom_f:.0f}Hz", font=("Segoe UI", 7, "bold"), fill=FG_COLOR)
 
             # -------------------------------------------------------------
             # Status / Readout Label
@@ -1681,9 +1635,9 @@ class TappAppGUI:
         except Exception:
             pass
 
-    # Aliases for backward compatibility
-    _render_waveform = _render_dual_waveform_and_spectrum
-    _render_dual_monitor = _render_dual_waveform_and_spectrum
+    _render_dual_waveform_and_spectrum = _render_dual_waveform
+    _render_waveform = _render_dual_waveform
+    _render_dual_monitor = _render_dual_waveform
 
     def _build_status_bar(self):
         status_bar = tk.Frame(self.root, bg=BG_COLOR, bd=0, highlightthickness=1, highlightbackground=LIGHT_BORDER)
