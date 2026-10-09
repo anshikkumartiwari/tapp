@@ -236,12 +236,14 @@ def save_calibration(
 
 def load_calibration(filepath: Path = CALIBRATION_FILE) -> Optional[Tuple[DetectorConfig, Dict]]:
     """Load calibration configuration from json file if available."""
+    filepath = Path(filepath)
     if not filepath.exists():
         return None
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             data = json.load(f)
-        cfg = DetectorConfig.from_dict(data.get("config", {}))
+        cfg_dict = data.get("config") or data.get("thresholds") or data
+        cfg = DetectorConfig.from_dict(cfg_dict)
         return cfg, data
     except Exception:
         return None

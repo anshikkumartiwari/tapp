@@ -87,6 +87,9 @@ class TappAppGUI:
         self.current_step = 0
         self.is_recording_phase = False
         self.phase_cancel_requested = False
+        self.recording_stop_event = threading.Event()
+        self.selected_device_name = "Default Microphone"
+        self.selected_device_index: Optional[int] = None
 
         # Live Evaluation / Advanced Lab State
         self.is_lab_mode = False
@@ -247,8 +250,8 @@ class TappAppGUI:
 
     def _jump_to_step(self, step_idx: int):
         if self.is_recording_phase:
-            messagebox.showinfo("Recording in Progress", "Please wait or cancel the active recording phase first.")
-            return
+            self.recording_stop_event.set()
+            self.is_recording_phase = False
         self._show_step(step_idx)
 
     # -------------------------------------------------------------------------
@@ -290,6 +293,35 @@ class TappAppGUI:
 
         self.btn_audio_toggle = tk.Button(dev_row, text="Pause Audio", font=FONT_BODY, bg=BG_COLOR, fg=FG_COLOR, command=self._toggle_audio_stream)
         self.btn_audio_toggle.pack(side="left", padx=4)
+
+        # Import Calibration profile row
+        cfg_row = tk.Frame(card, bg=BG_COLOR)
+        cfg_row.pack(fill="x", pady=(6, 2))
+
+        btn_import_cfg = tk.Button(
+            cfg_row,
+            text="Import calibration.json",
+            font=FONT_BODY,
+            bg=BG_COLOR,
+            fg=FG_COLOR,
+            command=self._import_calibration_dialog,
+            padx=10,
+            pady=3,
+        )
+        btn_import_cfg.pack(side="left", padx=(0, 8))
+
+        if CALIBRATION_FILE.exists():
+            btn_load_def = tk.Button(
+                cfg_row,
+                text="Load Default Profile (data/calibration.json)",
+                font=FONT_BODY,
+                bg=BG_COLOR,
+                fg=FG_COLOR,
+                command=self._load_saved_calibration_and_notify,
+                padx=10,
+                pady=3,
+            )
+            btn_load_def.pack(side="left")
 
         # Live VU Meter & Waveform
         meter_card = tk.LabelFrame(pad, text=" Live Input Level & Oscilloscope ", font=FONT_HEADING, bg=BG_COLOR, fg=FG_COLOR, padx=14, pady=10)
@@ -379,8 +411,23 @@ class TappAppGUI:
         self.step1_nav = tk.Frame(pad, bg=BG_COLOR)
         self.step1_nav.pack(fill="x", pady=6)
 
-        self.btn_step1_action = tk.Button(
+        btn_back = tk.Button(
             self.step1_nav,
+            text="<- Back to Step 1",
+            font=FONT_BODY,
+            bg=BG_COLOR,
+            fg=FG_COLOR,
+            padx=10,
+            pady=6,
+            command=lambda: self._show_step(0),
+        )
+        btn_back.pack(side="left")
+
+        self.step1_right_nav = tk.Frame(self.step1_nav, bg=BG_COLOR)
+        self.step1_right_nav.pack(side="right")
+
+        self.btn_step1_action = tk.Button(
+            self.step1_right_nav,
             text="Record Room Noise (10s)",
             font=FONT_BIG,
             bg=HIGHLIGHT_BG,
@@ -391,41 +438,54 @@ class TappAppGUI:
         )
         self.btn_step1_action.pack(side="right", padx=4)
 
+        btn_proceed_step1 = tk.Button(
+            self.step1_right_nav,
+            text="Proceed to Step 3 ->",
+            font=FONT_BODY,
+            bg=BG_COLOR,
+            fg=FG_COLOR,
+            padx=10,
+            pady=6,
+            command=lambda: self._show_step(2),
+        )
+        btn_proceed_step1.pack(side="right", padx=4)
+
         if self.ambient_audio is not None:
             self._display_step1_completed()
 
     def _display_step1_completed(self):
         floor = float(np.percentile(np.abs(self.ambient_audio), 99)) if self.ambient_audio is not None else 0.005
         self.step1_status_lbl.config(
-            text=f"Phase 1 Complete: Recorded 10s of ambient noise. Noise floor baseline: {floor:.4f}",
+            text=f"Phase 1 Complete: Recorded ambient noise baseline (floor: {floor:.4f}).",
             fg=FG_COLOR,
         )
-        for child in self.step1_nav.winfo_children():
-            child.destroy()
+        if hasattr(self, "step1_right_nav"):
+            for child in self.step1_right_nav.winfo_children():
+                child.destroy()
 
-        btn_next = tk.Button(
-            self.step1_nav,
-            text="Proceed to Step 2 ->",
-            font=FONT_BIG,
-            bg=HIGHLIGHT_BG,
-            fg=HIGHLIGHT_FG,
-            padx=14,
-            pady=6,
-            command=lambda: self._show_step(2),
-        )
-        btn_next.pack(side="right", padx=4)
+            btn_next = tk.Button(
+                self.step1_right_nav,
+                text="Proceed to Step 3 ->",
+                font=FONT_BIG,
+                bg=HIGHLIGHT_BG,
+                fg=HIGHLIGHT_FG,
+                padx=14,
+                pady=6,
+                command=lambda: self._show_step(2),
+            )
+            btn_next.pack(side="right", padx=4)
 
-        btn_redo = tk.Button(
-            self.step1_nav,
-            text="Redo Step 1",
-            font=FONT_BODY,
-            bg=BG_COLOR,
-            fg=FG_COLOR,
-            padx=12,
-            pady=6,
-            command=self._start_record_phase_a,
-        )
-        btn_redo.pack(side="right", padx=4)
+            btn_redo = tk.Button(
+                self.step1_right_nav,
+                text="Redo Step 2",
+                font=FONT_BODY,
+                bg=BG_COLOR,
+                fg=FG_COLOR,
+                padx=12,
+                pady=6,
+                command=self._start_record_phase_a,
+            )
+            btn_redo.pack(side="right", padx=4)
 
     # -------------------------------------------------------------------------
     # Step 2: Positive Palm Taps (30 taps)
@@ -471,8 +531,23 @@ class TappAppGUI:
         self.step2_nav = tk.Frame(pad, bg=BG_COLOR)
         self.step2_nav.pack(fill="x", pady=6)
 
-        self.btn_step2_action = tk.Button(
+        btn_back = tk.Button(
             self.step2_nav,
+            text="<- Back to Step 2",
+            font=FONT_BODY,
+            bg=BG_COLOR,
+            fg=FG_COLOR,
+            padx=10,
+            pady=6,
+            command=lambda: self._show_step(1),
+        )
+        btn_back.pack(side="left")
+
+        self.step2_right_nav = tk.Frame(self.step2_nav, bg=BG_COLOR)
+        self.step2_right_nav.pack(side="right")
+
+        self.btn_step2_action = tk.Button(
+            self.step2_right_nav,
             text="Start Recording Taps (30s)",
             font=FONT_BIG,
             bg=HIGHLIGHT_BG,
@@ -483,41 +558,58 @@ class TappAppGUI:
         )
         self.btn_step2_action.pack(side="right", padx=4)
 
+        btn_proceed_step2 = tk.Button(
+            self.step2_right_nav,
+            text="Proceed to Step 4 ->",
+            font=FONT_BODY,
+            bg=BG_COLOR,
+            fg=FG_COLOR,
+            padx=10,
+            pady=6,
+            command=lambda: self._show_step(3),
+        )
+        btn_proceed_step2.pack(side="right", padx=4)
+
         if len(self.tap_candidates) > 0:
             self._display_step2_completed()
 
     def _display_step2_completed(self):
         count = len(self.tap_candidates)
-        self.step2_status_lbl.config(
-            text=f"Phase 2 Complete: Successfully captured {count} valid chassis taps.",
-            fg=FG_COLOR,
-        )
-        for child in self.step2_nav.winfo_children():
-            child.destroy()
+        if count >= 10:
+            msg = f"Phase 2 Complete: Successfully captured {count} valid chassis taps."
+        elif count > 0:
+            msg = f"Phase 2 Complete: Detected {count} taps (15-30 recommended). You can Proceed or Redo."
+        else:
+            msg = "Phase 2 Complete: No taps detected above baseline. You can Redo or Proceed."
+        self.step2_status_lbl.config(text=msg, fg=FG_COLOR)
 
-        btn_next = tk.Button(
-            self.step2_nav,
-            text="Proceed to Step 3 ->",
-            font=FONT_BIG,
-            bg=HIGHLIGHT_BG,
-            fg=HIGHLIGHT_FG,
-            padx=14,
-            pady=6,
-            command=lambda: self._show_step(3),
-        )
-        btn_next.pack(side="right", padx=4)
+        if hasattr(self, "step2_right_nav"):
+            for child in self.step2_right_nav.winfo_children():
+                child.destroy()
 
-        btn_redo = tk.Button(
-            self.step2_nav,
-            text="Redo Step 2",
-            font=FONT_BODY,
-            bg=BG_COLOR,
-            fg=FG_COLOR,
-            padx=12,
-            pady=6,
-            command=self._start_record_phase_b,
-        )
-        btn_redo.pack(side="right", padx=4)
+            btn_next = tk.Button(
+                self.step2_right_nav,
+                text="Proceed to Step 4 ->",
+                font=FONT_BIG,
+                bg=HIGHLIGHT_BG,
+                fg=HIGHLIGHT_FG,
+                padx=14,
+                pady=6,
+                command=lambda: self._show_step(3),
+            )
+            btn_next.pack(side="right", padx=4)
+
+            btn_redo = tk.Button(
+                self.step2_right_nav,
+                text="Redo Step 3 (Palm Taps)",
+                font=FONT_BODY,
+                bg=BG_COLOR,
+                fg=FG_COLOR,
+                padx=12,
+                pady=6,
+                command=self._start_record_phase_b,
+            )
+            btn_redo.pack(side="right", padx=4)
 
     # -------------------------------------------------------------------------
     # Step 3: Typing & Clicks (Negative Samples, 30s)
@@ -563,8 +655,23 @@ class TappAppGUI:
         self.step3_nav = tk.Frame(pad, bg=BG_COLOR)
         self.step3_nav.pack(fill="x", pady=6)
 
-        self.btn_step3_action = tk.Button(
+        btn_back = tk.Button(
             self.step3_nav,
+            text="<- Back to Step 3",
+            font=FONT_BODY,
+            bg=BG_COLOR,
+            fg=FG_COLOR,
+            padx=10,
+            pady=6,
+            command=lambda: self._show_step(2),
+        )
+        btn_back.pack(side="left")
+
+        self.step3_right_nav = tk.Frame(self.step3_nav, bg=BG_COLOR)
+        self.step3_right_nav.pack(side="right")
+
+        self.btn_step3_action = tk.Button(
+            self.step3_right_nav,
             text="Record Typing Activity (30s)",
             font=FONT_BIG,
             bg=HIGHLIGHT_BG,
@@ -575,41 +682,54 @@ class TappAppGUI:
         )
         self.btn_step3_action.pack(side="right", padx=4)
 
+        btn_proceed_step3 = tk.Button(
+            self.step3_right_nav,
+            text="Fit Model & Proceed ->",
+            font=FONT_BODY,
+            bg=BG_COLOR,
+            fg=FG_COLOR,
+            padx=10,
+            pady=6,
+            command=self._execute_calibration_fitting,
+        )
+        btn_proceed_step3.pack(side="right", padx=4)
+
         if len(self.negative_candidates) > 0:
             self._display_step3_completed()
 
     def _display_step3_completed(self):
         count = len(self.negative_candidates)
         self.step3_status_lbl.config(
-            text=f"Phase 3 Complete: Captured typing audio. Extracted {count} negative candidate transients.",
+            text=f"Phase 3 Complete: Captured typing audio ({count} candidate transients).",
             fg=FG_COLOR,
         )
-        for child in self.step3_nav.winfo_children():
-            child.destroy()
+        if hasattr(self, "step3_right_nav"):
+            for child in self.step3_right_nav.winfo_children():
+                child.destroy()
 
-        btn_finish = tk.Button(
-            self.step3_nav,
-            text="Fit Model & Proceed to Step 4 ->",
-            font=FONT_BIG,
-            bg=HIGHLIGHT_BG,
-            fg=HIGHLIGHT_FG,
-            padx=14,
-            pady=6,
-            command=self._execute_calibration_fitting,
-        )
-        btn_finish.pack(side="right", padx=4)
+            btn_finish = tk.Button(
+                self.step3_right_nav,
+                text="Fit Model & Proceed to Step 5 ->",
+                font=FONT_BIG,
+                bg=HIGHLIGHT_BG,
+                fg=HIGHLIGHT_FG,
+                padx=14,
+                pady=6,
+                command=self._execute_calibration_fitting,
+            )
+            btn_finish.pack(side="right", padx=4)
 
-        btn_redo = tk.Button(
-            self.step3_nav,
-            text="Redo Step 3",
-            font=FONT_BODY,
-            bg=BG_COLOR,
-            fg=FG_COLOR,
-            padx=12,
-            pady=6,
-            command=self._start_record_phase_c,
-        )
-        btn_redo.pack(side="right", padx=4)
+            btn_redo = tk.Button(
+                self.step3_right_nav,
+                text="Redo Step 4",
+                font=FONT_BODY,
+                bg=BG_COLOR,
+                fg=FG_COLOR,
+                padx=12,
+                pady=6,
+                command=self._start_record_phase_c,
+            )
+            btn_redo.pack(side="right", padx=4)
 
     # -------------------------------------------------------------------------
     # Step 4: Fit Model & Standalone Builder
@@ -669,7 +789,19 @@ class TappAppGUI:
             pady=8,
             command=self._build_standalone_app,
         )
-        self.btn_build_exe.pack(side="left", padx=(0, 10))
+        self.btn_build_exe.pack(side="left", padx=(0, 8))
+
+        self.btn_export_cfg = tk.Button(
+            btn_row,
+            text="Export calibration.json",
+            font=FONT_BODY,
+            bg=BG_COLOR,
+            fg=FG_COLOR,
+            padx=12,
+            pady=8,
+            command=self._export_calibration_dialog,
+        )
+        self.btn_export_cfg.pack(side="left", padx=4)
 
         self.btn_shortcut = tk.Button(
             btn_row,
@@ -699,7 +831,7 @@ class TappAppGUI:
         bottom_bar = tk.Frame(pad, bg=BG_COLOR)
         bottom_bar.pack(fill="x", pady=6)
 
-        btn_back = tk.Button(bottom_bar, text="<- Back to Step 1", font=FONT_BODY, bg=BG_COLOR, fg=FG_COLOR, command=lambda: self._show_step(0))
+        btn_back = tk.Button(bottom_bar, text="<- Back to Step 4", font=FONT_BODY, bg=BG_COLOR, fg=FG_COLOR, command=lambda: self._show_step(3))
         btn_back.pack(side="left")
 
     def _execute_calibration_fitting(self):
@@ -715,7 +847,7 @@ class TappAppGUI:
         self.detector.config = cfg
 
         dev_meta = {
-            "device_name": self.device_combo.get(),
+            "device_name": getattr(self, "selected_device_name", "Microphone Array"),
             "sample_rate": self.audio_engine.actual_sample_rate,
             "host_api": "Windows Sound Architecture",
         }
@@ -784,6 +916,101 @@ class TappAppGUI:
             messagebox.showinfo("Launched", "tapp.exe has been launched and is active in your System Tray.", parent=self.root)
         except Exception as e:
             messagebox.showerror("Launch Error", f"Failed to start tapp.exe:\n{e}", parent=self.root)
+
+    def _import_calibration_dialog(self):
+        path = filedialog.askopenfilename(
+            title="Import Calibration JSON",
+            filetypes=[("JSON Files", "*.json"), ("All Files", "*.*")],
+            initialdir=str(Path("data").resolve()) if Path("data").exists() else ".",
+        )
+        if not path:
+            return
+        res = load_calibration(Path(path))
+        if res is not None:
+            cfg, data = res
+            self.calibrated_config = cfg
+            self.detector.config = cfg
+            self.last_calibration_summary = data.get("summary")
+            messagebox.showinfo(
+                "Calibration Imported",
+                f"Successfully loaded calibration from:\n{path}\n\n"
+                f"- Amplitude Floor: {cfg.amplitude_floor:.3f}\n"
+                f"- Max Centroid: {cfg.centroid_max_hz:.0f} Hz\n"
+                f"- Attack Ratio: {cfg.attack_ratio_threshold:.1f}x\n\n"
+                "Profile loaded! You can test it on Step 1, or jump directly to Step 5 to build tapp.exe.",
+            )
+            if hasattr(self, "step0_status_lbl"):
+                self.step0_status_lbl.config(
+                    text=f"Loaded calibration from {Path(path).name} (Floor: {cfg.amplitude_floor:.3f}).",
+                    fg=FG_COLOR,
+                )
+        else:
+            messagebox.showerror("Import Error", f"Could not parse calibration JSON from:\n{path}")
+
+    def _load_saved_calibration_and_notify(self):
+        res = load_calibration()
+        if res is not None:
+            cfg, data = res
+            self.calibrated_config = cfg
+            self.detector.config = cfg
+            self.last_calibration_summary = data.get("summary")
+            messagebox.showinfo(
+                "Default Profile Loaded",
+                f"Successfully loaded data/calibration.json:\n\n"
+                f"- Amplitude Floor: {cfg.amplitude_floor:.3f}\n"
+                f"- Max Centroid: {cfg.centroid_max_hz:.0f} Hz\n"
+                f"- Attack Ratio: {cfg.attack_ratio_threshold:.1f}x\n",
+            )
+            if hasattr(self, "step0_status_lbl"):
+                self.step0_status_lbl.config(
+                    text=f"Loaded default calibration.json (Floor: {cfg.amplitude_floor:.3f}).",
+                    fg=FG_COLOR,
+                )
+        else:
+            messagebox.showinfo("Not Found", "No data/calibration.json was found. Please run the calibration wizard.")
+
+    def _export_calibration_dialog(self):
+        path = filedialog.asksaveasfilename(
+            title="Export Calibration JSON",
+            defaultextension=".json",
+            initialfile="calibration.json",
+            filetypes=[("JSON Files", "*.json"), ("All Files", "*.*")],
+        )
+        if not path:
+            return
+        try:
+            cfg = self.calibrated_config or self.detector.config
+            dev_meta = {
+                "device_name": getattr(self, "selected_device_name", "Microphone Array"),
+                "sample_rate": self.audio_engine.actual_sample_rate,
+                "host_api": "Windows Sound Architecture",
+            }
+            save_calibration(cfg, self.last_calibration_summary or {}, dev_meta, filepath=Path(path))
+            messagebox.showinfo(
+                "Export Complete",
+                f"Calibration JSON successfully saved to:\n{path}",
+            )
+            if hasattr(self, "build_status_lbl"):
+                self.build_status_lbl.config(
+                    text=f"Exported calibration to: {Path(path).name}",
+                    fg=FG_COLOR,
+                )
+        except Exception as exc:
+            messagebox.showerror("Export Error", f"Failed to export calibration:\n{exc}")
+
+    def _cancel_active_recording(self):
+        self.recording_stop_event.set()
+        self.is_recording_phase = False
+        self._show_step(self.current_step)
+
+    def _finish_phase_a_early(self):
+        self.recording_stop_event.set()
+
+    def _finish_phase_b_early(self):
+        self.recording_stop_event.set()
+
+    def _finish_phase_c_early(self):
+        self.recording_stop_event.set()
 
     # -------------------------------------------------------------------------
     # Advanced Lab Mode
@@ -936,18 +1163,43 @@ class TappAppGUI:
         if self.is_recording_phase:
             return
         self.is_recording_phase = True
+        self.recording_stop_event.clear()
         self.step1_status_lbl.config(text="Recording 10s of ambient noise... Please stay quiet.", fg=FG_COLOR)
 
+        if hasattr(self, "step1_right_nav"):
+            for child in self.step1_right_nav.winfo_children():
+                child.destroy()
+            tk.Button(
+                self.step1_right_nav,
+                text="Finish Early",
+                font=FONT_BODY,
+                bg=HIGHLIGHT_BG,
+                fg=HIGHLIGHT_FG,
+                padx=12,
+                pady=6,
+                command=self._finish_phase_a_early,
+            ).pack(side="right", padx=4)
+            tk.Button(
+                self.step1_right_nav,
+                text="Redo / Cancel",
+                font=FONT_BODY,
+                bg=BG_COLOR,
+                fg=FG_COLOR,
+                padx=12,
+                pady=6,
+                command=self._cancel_active_recording,
+            ).pack(side="right", padx=4)
+
         def worker():
-            sr = self.audio_engine.actual_sample_rate
             dur = 10.0
-            collected = []
             start = time.time()
             while (time.time() - start) < dur:
+                if self.recording_stop_event.is_set():
+                    break
                 time.sleep(0.05)
                 el = time.time() - start
                 self.ui_update_queue.put(("PROG_A", (el, dur)))
-            rec = self.audio_engine.read_recent_seconds(dur)
+            rec = self.audio_engine.read_recent_seconds(min(dur, max(2.0, time.time() - start)))
             self.ui_update_queue.put(("DONE_A", rec))
 
         threading.Thread(target=worker, daemon=True).start()
@@ -956,16 +1208,43 @@ class TappAppGUI:
         if self.is_recording_phase:
             return
         self.is_recording_phase = True
+        self.recording_stop_event.clear()
         self.step2_status_lbl.config(text="Recording taps... Please tap right palm rest ~30 times with pauses.", fg=FG_COLOR)
+
+        if hasattr(self, "step2_right_nav"):
+            for child in self.step2_right_nav.winfo_children():
+                child.destroy()
+            tk.Button(
+                self.step2_right_nav,
+                text="Finish Early & Process",
+                font=FONT_BIG,
+                bg=HIGHLIGHT_BG,
+                fg=HIGHLIGHT_FG,
+                padx=14,
+                pady=6,
+                command=self._finish_phase_b_early,
+            ).pack(side="right", padx=4)
+            tk.Button(
+                self.step2_right_nav,
+                text="Redo / Cancel",
+                font=FONT_BODY,
+                bg=BG_COLOR,
+                fg=FG_COLOR,
+                padx=12,
+                pady=6,
+                command=self._cancel_active_recording,
+            ).pack(side="right", padx=4)
 
         def worker():
             dur = 30.0
             start = time.time()
             while (time.time() - start) < dur:
+                if self.recording_stop_event.is_set():
+                    break
                 time.sleep(0.05)
                 el = time.time() - start
                 self.ui_update_queue.put(("PROG_B", (el, dur)))
-            rec = self.audio_engine.read_recent_seconds(dur)
+            rec = self.audio_engine.read_recent_seconds(min(dur, max(2.0, time.time() - start)))
             self.ui_update_queue.put(("DONE_B", rec))
 
         threading.Thread(target=worker, daemon=True).start()
@@ -974,40 +1253,88 @@ class TappAppGUI:
         if self.is_recording_phase:
             return
         self.is_recording_phase = True
+        self.recording_stop_event.clear()
         self.step3_status_lbl.config(text="Recording typing and clicks... Please type and click normally.", fg=FG_COLOR)
+
+        if hasattr(self, "step3_right_nav"):
+            for child in self.step3_right_nav.winfo_children():
+                child.destroy()
+            tk.Button(
+                self.step3_right_nav,
+                text="Finish Early & Process",
+                font=FONT_BIG,
+                bg=HIGHLIGHT_BG,
+                fg=HIGHLIGHT_FG,
+                padx=14,
+                pady=6,
+                command=self._finish_phase_c_early,
+            ).pack(side="right", padx=4)
+            tk.Button(
+                self.step3_right_nav,
+                text="Redo / Cancel",
+                font=FONT_BODY,
+                bg=BG_COLOR,
+                fg=FG_COLOR,
+                padx=12,
+                pady=6,
+                command=self._cancel_active_recording,
+            ).pack(side="right", padx=4)
 
         def worker():
             dur = 30.0
             start = time.time()
             while (time.time() - start) < dur:
+                if self.recording_stop_event.is_set():
+                    break
                 time.sleep(0.05)
                 el = time.time() - start
                 self.ui_update_queue.put(("PROG_C", (el, dur)))
-            rec = self.audio_engine.read_recent_seconds(dur)
+            rec = self.audio_engine.read_recent_seconds(min(dur, max(2.0, time.time() - start)))
             self.ui_update_queue.put(("DONE_C", rec))
 
         threading.Thread(target=worker, daemon=True).start()
 
     def _process_phase_a_result(self, audio: np.ndarray):
-        self.is_recording_phase = False
-        self.ambient_audio = audio
-        self._display_step1_completed()
+        try:
+            self.ambient_audio = audio
+        finally:
+            self.is_recording_phase = False
+            self._display_step1_completed()
 
     def _process_phase_b_result(self, audio: np.ndarray):
-        self.is_recording_phase = False
-        sr = self.audio_engine.actual_sample_rate
-        noise_floor = float(np.percentile(np.abs(self.ambient_audio), 99)) if self.ambient_audio is not None else 0.005
-        cands = segment_audio_recording(audio, sr=sr, noise_floor=noise_floor, default_label="tap", expected_count=30)
-        self.tap_candidates = cands
-        self._display_step2_completed()
+        try:
+            sr = self.audio_engine.actual_sample_rate
+            noise_floor = float(np.percentile(np.abs(self.ambient_audio), 99)) if self.ambient_audio is not None else 0.005
+            cands = segment_audio_recording(
+                audio,
+                sr=sr,
+                ambient_noise_level=noise_floor,
+                default_label="tap",
+                top_k=30,
+            )
+            self.tap_candidates = cands
+        except Exception:
+            self.tap_candidates = []
+        finally:
+            self.is_recording_phase = False
+            self._display_step2_completed()
 
     def _process_phase_c_result(self, audio: np.ndarray):
-        self.is_recording_phase = False
-        sr = self.audio_engine.actual_sample_rate
-        noise_floor = float(np.percentile(np.abs(self.ambient_audio), 99)) if self.ambient_audio is not None else 0.005
-        cands = segment_audio_recording(audio, sr=sr, noise_floor=noise_floor, default_label="negative")
-        self.negative_candidates = cands
-        self._display_step3_completed()
+        try:
+            sr = self.audio_engine.actual_sample_rate
+            noise_floor = float(np.percentile(np.abs(self.ambient_audio), 99)) if self.ambient_audio is not None else 0.005
+            cands = segment_audio_recording(
+                audio,
+                sr=sr,
+                ambient_noise_level=noise_floor,
+                default_label="negative",
+            )
+            self.negative_candidates = cands
+        except Exception:
+            self.negative_candidates = []
+        finally:
+            self.is_recording_phase = False
+            self._display_step3_completed()
 
     # -------------------------------------------------------------------------
     # Live Detection & Lab Log

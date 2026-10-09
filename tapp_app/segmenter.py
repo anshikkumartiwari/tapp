@@ -46,21 +46,14 @@ def segment_audio_recording(
     post_context_sec: float = 0.14,
     default_label: str = "tap",
     top_k: Optional[int] = None,
+    **kwargs,
 ) -> List[CandidateEvent]:
-    """Segment a continuous audio recording into candidate transient events.
-    
-    Parameters:
-    -----------
-    audio : 1D float32 audio array
-    sr : sample rate (Hz)
-    ambient_noise_level : background noise ceiling estimate
-    min_peak_threshold : minimum peak amplitude required (defaults to max(0.02, 2.5 * ambient))
-    refractory_sec : minimum duration between consecutive candidate onsets
-    pre_context_sec : context window before the detected onset peak
-    post_context_sec : context window after the detected onset peak
-    default_label : initial candidate label ('tap', 'typing', etc.)
-    top_k : if specified, selects the top_k strongest candidates by peak amplitude
-    """
+    """Segment a continuous audio recording into candidate transient events."""
+    if "noise_floor" in kwargs:
+        ambient_noise_level = kwargs["noise_floor"]
+    if "expected_count" in kwargs:
+        top_k = kwargs["expected_count"]
+
     audio = np.asarray(audio, dtype=np.float32).reshape(-1)
     if audio.size == 0:
         return []
