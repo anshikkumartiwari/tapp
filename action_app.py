@@ -191,7 +191,7 @@ class TappActionApp:
         self.combo_single.pack(side="left", padx=6)
         self.combo_single.bind("<<ComboboxSelected>>", lambda e: self._on_settings_changed())
 
-        tk.Button(
+        self.btn_test_single = tk.Button(
             r1,
             text="Test Vol Up",
             font=FONT_BODY,
@@ -202,7 +202,9 @@ class TappActionApp:
             command=lambda: self._test_action(self.combo_single.get()),
             padx=8,
             pady=1,
-        ).pack(side="left", padx=6)
+            width=16,
+        )
+        self.btn_test_single.pack(side="left", padx=6)
 
         # 2. Double Tap
         r2 = tk.Frame(card, bg=BG_COLOR)
@@ -213,7 +215,7 @@ class TappActionApp:
         self.combo_double.pack(side="left", padx=6)
         self.combo_double.bind("<<ComboboxSelected>>", lambda e: self._on_settings_changed())
 
-        tk.Button(
+        self.btn_test_double = tk.Button(
             r2,
             text="Test Vol Down",
             font=FONT_BODY,
@@ -224,7 +226,9 @@ class TappActionApp:
             command=lambda: self._test_action(self.combo_double.get()),
             padx=8,
             pady=1,
-        ).pack(side="left", padx=6)
+            width=16,
+        )
+        self.btn_test_double.pack(side="left", padx=6)
 
         # 3. Triple Tap
         r3 = tk.Frame(card, bg=BG_COLOR)
@@ -235,7 +239,7 @@ class TappActionApp:
         self.combo_triple.pack(side="left", padx=6)
         self.combo_triple.bind("<<ComboboxSelected>>", lambda e: self._on_settings_changed())
 
-        tk.Button(
+        self.btn_test_triple = tk.Button(
             r3,
             text="Test Mute",
             font=FONT_BODY,
@@ -246,7 +250,11 @@ class TappActionApp:
             command=lambda: self._test_action(self.combo_triple.get()),
             padx=8,
             pady=1,
-        ).pack(side="left", padx=6)
+            width=16,
+        )
+        self.btn_test_triple.pack(side="left", padx=6)
+
+        self._update_test_buttons()
 
         # Timing config row
         r4 = tk.Frame(card, bg=BG_COLOR)
@@ -366,6 +374,40 @@ class TappActionApp:
         self.log_list.see(tk.END)
         self.status_lbl.config(text=f"Test executed: {action_name}")
 
+    def _get_test_button_label(self, action: str) -> str:
+        if not action or action.lower().startswith("none"):
+            return "Test (None)"
+        label_map = {
+            "Volume Up": "Test Vol Up",
+            "Volume Down": "Test Vol Down",
+            "Mute / Unmute Volume": "Test Mute",
+            "Play / Pause Media": "Test Play/Pause",
+            "Next Track": "Test Next Track",
+            "Previous Track": "Test Prev Track",
+            "Screenshot (PrintScreen)": "Test Screenshot",
+        }
+        return label_map.get(action, f"Test {action}")
+
+    def _update_test_buttons(self):
+        s = self.combo_single.get() if hasattr(self, "combo_single") else ""
+        d = self.combo_double.get() if hasattr(self, "combo_double") else ""
+        t = self.combo_triple.get() if hasattr(self, "combo_triple") else ""
+        if hasattr(self, "btn_test_single"):
+            self.btn_test_single.config(
+                text=self._get_test_button_label(s),
+                state="normal" if (s and not s.lower().startswith("none")) else "disabled",
+            )
+        if hasattr(self, "btn_test_double"):
+            self.btn_test_double.config(
+                text=self._get_test_button_label(d),
+                state="normal" if (d and not d.lower().startswith("none")) else "disabled",
+            )
+        if hasattr(self, "btn_test_triple"):
+            self.btn_test_triple.config(
+                text=self._get_test_button_label(t),
+                state="normal" if (t and not t.lower().startswith("none")) else "disabled",
+            )
+
     def _on_settings_changed(self):
         try:
             dt_to = float(self.spin_dt_speed.get())
@@ -378,6 +420,7 @@ class TappActionApp:
         self.action_manager.settings.triple_tap_action = self.combo_triple.get()
         self.action_manager.settings.double_tap_timeout_sec = dt_to
         self.action_manager.save_settings()
+        self._update_test_buttons()
 
     def _save_settings_manual(self):
         self._on_settings_changed()

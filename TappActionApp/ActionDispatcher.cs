@@ -92,6 +92,13 @@ public class ActionDispatcher
         keybd_event(vkCode, 0, KEYEVENTF_KEYUP, UIntPtr.Zero);
     }
 
+    public static bool IsActionConfigured(string? action)
+    {
+        return !string.IsNullOrWhiteSpace(action) &&
+               !action.StartsWith("None", StringComparison.OrdinalIgnoreCase) &&
+               !action.Equals("Disabled", StringComparison.OrdinalIgnoreCase);
+    }
+
     public void OnHitDetected()
     {
         if (!Enabled) return;
@@ -100,9 +107,26 @@ public class ActionDispatcher
 
         lock (_lock)
         {
-            // Cancel pending single-tap timer
+            // Cancel pending timers
             _timer?.Dispose();
             _timer = null;
+
+            bool hasDouble = IsActionConfigured(DoubleTapAction);
+            bool hasTriple = IsActionConfigured(TripleTapAction);
+            bool hasSingle = IsActionConfigured(SingleTapAction);
+
+            // Instant single-tap mode:
+            // When neither double nor triple tap actions are configured,
+            // fire single tap immediately with zero buffering latency and zero canceled taps!
+            if (!hasDouble && !hasTriple)
+            {
+                _tapChain.Clear();
+                if (hasSingle)
+                {
+                    Dispatch("Single Tap", SingleTapAction);
+                }
+                return;
+            }
 
             // Reset chain if last tap was too long ago
             if (_tapChain.Count > 0 && (now - _tapChain[^1]) > DoubleTapTimeoutSec)
@@ -115,21 +139,39 @@ public class ActionDispatcher
 
             if (count == 1)
             {
-                // First tap: wait timeout before deciding single tap
-                int dueMs = (int)(DoubleTapTimeoutSec * 1000);
-                _timer = new System.Threading.Timer(_ => FinalizeSingleTap(), null, dueMs, Timeout.Infinite);
+                if (hasSingle)
+                {
+                    // First tap: wait timeout before deciding single tap
+                    int dueMs = (int)(DoubleTapTimeoutSec * 1000);
+                    _timer = new System.Threading.Timer(_ => FinalizeSingleTap(), null, dueMs, Timeout.Infinite);
+                }
             }
             else if (count == 2)
             {
-                // Second tap: wait small window in case user does triple tap
-                int dueMs = (int)(DoubleTapTimeoutSec * 1000);
-                _timer = new System.Threading.Timer(_ => FinalizeDoubleTap(), null, dueMs, Timeout.Infinite);
+                if (!hasTriple)
+                {
+                    // Triple tap is disabled: fire double tap immediately!
+                    _tapChain.Clear();
+                    if (hasDouble)
+                    {
+                        Dispatch("Double Tap", DoubleTapAction);
+                    }
+                }
+                else
+                {
+                    // Triple tap is enabled: wait small window in case user does triple tap
+                    int dueMs = (int)(DoubleTapTimeoutSec * 1000);
+                    _timer = new System.Threading.Timer(_ => FinalizeDoubleTap(), null, dueMs, Timeout.Infinite);
+                }
             }
             else if (count >= 3)
             {
                 // Third tap: fire triple tap immediately!
                 _tapChain.Clear();
-                Dispatch("Triple Tap", TripleTapAction);
+                if (hasTriple)
+                {
+                    Dispatch("Triple Tap", TripleTapAction);
+                }
             }
         }
     }

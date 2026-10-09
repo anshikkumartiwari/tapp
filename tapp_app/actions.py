@@ -92,6 +92,14 @@ class ActionSettings:
         return cls(**filtered)
 
 
+def is_action_configured(action: Optional[str]) -> bool:
+    """Check if an action is non-empty and not set to None/Disabled."""
+    if not action:
+        return False
+    act = action.strip().lower()
+    return not act.startswith("none") and act != "disabled"
+
+
 class GestureActionManager:
     """Tracks detected tap timestamps, resolves single/double/triple taps, and executes actions."""
 
@@ -125,10 +133,23 @@ class GestureActionManager:
 
         now = time.time()
         with self._lock:
-            # Cancel pending single-tap timer
+            # Cancel pending timers
             if self._timer is not None:
                 self._timer.cancel()
                 self._timer = None
+
+            has_double = is_action_configured(self.settings.double_tap_action)
+            has_triple = is_action_configured(self.settings.triple_tap_action)
+            has_single = is_action_configured(self.settings.single_tap_action)
+
+            # Instant single-tap mode:
+            # When neither double nor triple tap actions are configured,
+            # fire single tap immediately with zero latency and zero canceled taps!
+            if not has_double and not has_triple:
+                self._tap_chain = []
+                if has_single:
+                    self._dispatch_action("Single Tap", self.settings.single_tap_action)
+                return
 
             # Clean chain if last tap was too long ago
             timeout = self.settings.double_tap_timeout_sec
@@ -139,19 +160,27 @@ class GestureActionManager:
             chain_len = len(self._tap_chain)
 
             if chain_len == 1:
-                # First tap: wait timeout before deciding single tap
-                self._timer = threading.Timer(timeout, self._finalize_single_tap)
-                self._timer.daemon = True
-                self._timer.start()
+                if has_single:
+                    # First tap: wait timeout before deciding single tap
+                    self._timer = threading.Timer(timeout, self._finalize_single_tap)
+                    self._timer.daemon = True
+                    self._timer.start()
             elif chain_len == 2:
-                # Second tap: wait small window in case it's a triple tap
-                self._timer = threading.Timer(timeout, self._finalize_double_tap)
-                self._timer.daemon = True
-                self._timer.start()
+                if not has_triple:
+                    # Triple tap is disabled: fire double tap immediately!
+                    self._tap_chain = []
+                    if has_double:
+                        self._dispatch_action("Double Tap", self.settings.double_tap_action)
+                else:
+                    # Second tap: wait small window in case it's a triple tap
+                    self._timer = threading.Timer(timeout, self._finalize_double_tap)
+                    self._timer.daemon = True
+                    self._timer.start()
             elif chain_len >= 3:
                 # Third tap: fire immediately!
                 self._tap_chain = []
-                self._dispatch_action("Triple Tap", self.settings.triple_tap_action)
+                if has_triple:
+                    self._dispatch_action("Triple Tap", self.settings.triple_tap_action)
 
     def _finalize_single_tap(self):
         with self._lock:

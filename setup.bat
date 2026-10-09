@@ -81,18 +81,13 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
-REM 4. Build initial standalone tapp.exe executable
-echo.
-echo [*] Building native tapp.exe executable...
-"%PYTHON_EXE%" -c "from tapp_app.builder import build_standalone_executable; ok, msg = build_standalone_executable(); print(msg)"
-
 echo.
 echo ========================================================
 echo   Setup completed successfully!
 echo.
 echo   Next steps:
 echo   1. Run run.bat to calibrate sensitivity and test accuracy.
-echo   2. Run tapp.bat (or double-click tapp.exe) for daily use.
+echo   2. Build tapp.exe from the Calibration Wizard (Step 5).
 echo ========================================================
 echo.
 pause

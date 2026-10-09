@@ -284,5 +284,39 @@ class TestLiveGroundTruthAndRecalibration(unittest.TestCase):
             self.assertEqual(summary["live_negatives_added"], 1)
 
 
+class TestActions(unittest.TestCase):
+    def test_instant_single_tap_when_multitap_disabled(self):
+        from tapp_app.actions import ActionSettings, GestureActionManager, is_action_configured
+
+        self.assertTrue(is_action_configured("Volume Up"))
+        self.assertFalse(is_action_configured("None (Detection Only)"))
+        self.assertFalse(is_action_configured("Disabled"))
+        self.assertFalse(is_action_configured(""))
+
+        fired = []
+
+        def on_fired(gesture, action):
+            fired.append((gesture, action))
+
+        settings = ActionSettings(
+            single_tap_action="Volume Up",
+            double_tap_action="None (Detection Only)",
+            triple_tap_action="None (Detection Only)",
+            double_tap_timeout_sec=0.38,
+        )
+        manager = GestureActionManager(settings=settings, on_action_fired=on_fired)
+
+        # Triggering on_hit_detected should immediately fire single tap without waiting on timer
+        manager.on_hit_detected()
+        self.assertEqual(len(fired), 1)
+        self.assertEqual(fired[0], ("Single Tap", "Volume Up"))
+
+        # Triggering second hit immediately fires single tap again
+        manager.on_hit_detected()
+        self.assertEqual(len(fired), 2)
+        self.assertEqual(fired[1], ("Single Tap", "Volume Up"))
+
+
 if __name__ == "__main__":
     unittest.main()
+

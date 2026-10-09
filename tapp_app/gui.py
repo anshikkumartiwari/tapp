@@ -946,13 +946,14 @@ class TappAppGUI:
                 f"- Amplitude Floor: {cfg.amplitude_floor:.3f}\n"
                 f"- Max Centroid: {cfg.centroid_max_hz:.0f} Hz\n"
                 f"- Attack Ratio: {cfg.attack_ratio_threshold:.1f}x\n\n"
-                "Profile loaded! You can test it on Step 1, or jump directly to Step 5 to build tapp.exe.",
+                "Profile loaded! Proceeding directly to Step 5 (Build tapp.exe).",
             )
             if hasattr(self, "step0_status_lbl"):
                 self.step0_status_lbl.config(
                     text=f"Loaded calibration from {Path(path).name} (Floor: {cfg.amplitude_floor:.3f}).",
                     fg=FG_COLOR,
                 )
+            self._show_step(4)
         else:
             messagebox.showerror("Import Error", f"Could not parse calibration JSON from:\n{path}")
 
@@ -968,13 +969,15 @@ class TappAppGUI:
                 f"Successfully loaded data/calibration.json:\n\n"
                 f"- Amplitude Floor: {cfg.amplitude_floor:.3f}\n"
                 f"- Max Centroid: {cfg.centroid_max_hz:.0f} Hz\n"
-                f"- Attack Ratio: {cfg.attack_ratio_threshold:.1f}x\n",
+                f"- Attack Ratio: {cfg.attack_ratio_threshold:.1f}x\n\n"
+                "Profile loaded! Proceeding directly to Step 5 (Build tapp.exe).",
             )
             if hasattr(self, "step0_status_lbl"):
                 self.step0_status_lbl.config(
                     text=f"Loaded default calibration.json (Floor: {cfg.amplitude_floor:.3f}).",
                     fg=FG_COLOR,
                 )
+            self._show_step(4)
         else:
             messagebox.showinfo("Not Found", "No data/calibration.json was found. Please run the calibration wizard.")
 
@@ -1067,6 +1070,16 @@ class TappAppGUI:
 
         btn_export = tk.Button(ctrl_bar, text="Export Evaluation Report", font=FONT_BODY, bg=BG_COLOR, fg=FG_COLOR, command=self._export_evaluation_report)
         btn_export.pack(side="left", padx=4)
+
+        # Live Dual Spectrum & Waveform Monitor
+        vis_box = tk.LabelFrame(pad, text=" Live Spectrum & Waveform ", font=FONT_HEADING, bg=BG_COLOR, fg=FG_COLOR, padx=10, pady=8)
+        vis_box.pack(fill="x", pady=(0, 8))
+
+        self.live_canvas = tk.Canvas(vis_box, bg=BG_COLOR, height=115, highlightthickness=1, highlightbackground=BORDER_COLOR)
+        self.live_canvas.pack(fill="both", expand=True)
+
+        self.live_freq_lbl = tk.Label(vis_box, text="Peak: 0.000 | Frequency: 0 Hz", font=FONT_MONO, bg=BG_COLOR, fg=FG_COLOR)
+        self.live_freq_lbl.pack(anchor="w", pady=(4, 0))
 
         # Ground Truth Labeling Buttons
         fb_frame = tk.LabelFrame(pad, text=" Ground Truth Labeling (Select any event below) ", font=FONT_BODY, bg=BG_COLOR, fg=FG_COLOR, padx=8, pady=4)

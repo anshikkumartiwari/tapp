@@ -17,6 +17,9 @@ public class MainForm : Form
     private ComboBox _comboTriple;
     private NumericUpDown _numSpeed;
     private Button _btnPauseToggle;
+    private Button _btnTestS;
+    private Button _btnTestD;
+    private Button _btnTestT;
     private ListView _historyList;
     private Panel _vuPanel;
     private Label _vuLabel;
@@ -218,12 +221,12 @@ public class MainForm : Form
         _comboSingle.SelectedItem = _dispatcher.SingleTapAction;
         _comboSingle.SelectedIndexChanged += (s, e) => SaveMappingsFromUI();
 
-        var btnTestS = new Button { Text = "Test Vol Up", Location = new Point(360, 29), Size = new Size(115, 26), FlatStyle = FlatStyle.Flat, BackColor = Color.White, Font = btnFont };
-        btnTestS.Click += (s, e) => TestAction(_comboSingle.SelectedItem?.ToString() ?? "Volume Up");
+        _btnTestS = new Button { Location = new Point(360, 29), Size = new Size(135, 26), FlatStyle = FlatStyle.Flat, BackColor = Color.White, Font = btnFont };
+        _btnTestS.Click += (s, e) => TestAction(_comboSingle.SelectedItem?.ToString() ?? "Volume Up");
 
         grpMappings.Controls.Add(lblS);
         grpMappings.Controls.Add(_comboSingle);
-        grpMappings.Controls.Add(btnTestS);
+        grpMappings.Controls.Add(_btnTestS);
 
         // Double Tap
         var lblD = new Label { Text = "Double Tap:", Location = new Point(16, 66), Size = new Size(110, 24), AutoSize = false, Font = regFont };
@@ -232,12 +235,12 @@ public class MainForm : Form
         _comboDouble.SelectedItem = _dispatcher.DoubleTapAction;
         _comboDouble.SelectedIndexChanged += (s, e) => SaveMappingsFromUI();
 
-        var btnTestD = new Button { Text = "Test Vol Down", Location = new Point(360, 63), Size = new Size(115, 26), FlatStyle = FlatStyle.Flat, BackColor = Color.White, Font = btnFont };
-        btnTestD.Click += (s, e) => TestAction(_comboDouble.SelectedItem?.ToString() ?? "Volume Down");
+        _btnTestD = new Button { Location = new Point(360, 63), Size = new Size(135, 26), FlatStyle = FlatStyle.Flat, BackColor = Color.White, Font = btnFont };
+        _btnTestD.Click += (s, e) => TestAction(_comboDouble.SelectedItem?.ToString() ?? "Volume Down");
 
         grpMappings.Controls.Add(lblD);
         grpMappings.Controls.Add(_comboDouble);
-        grpMappings.Controls.Add(btnTestD);
+        grpMappings.Controls.Add(_btnTestD);
 
         // Triple Tap
         var lblT = new Label { Text = "Triple Tap:", Location = new Point(16, 100), Size = new Size(110, 24), AutoSize = false, Font = regFont };
@@ -246,12 +249,14 @@ public class MainForm : Form
         _comboTriple.SelectedItem = _dispatcher.TripleTapAction;
         _comboTriple.SelectedIndexChanged += (s, e) => SaveMappingsFromUI();
 
-        var btnTestT = new Button { Text = "Test Mute", Location = new Point(360, 97), Size = new Size(115, 26), FlatStyle = FlatStyle.Flat, BackColor = Color.White, Font = btnFont };
-        btnTestT.Click += (s, e) => TestAction(_comboTriple.SelectedItem?.ToString() ?? "Mute / Unmute Volume");
+        _btnTestT = new Button { Location = new Point(360, 97), Size = new Size(135, 26), FlatStyle = FlatStyle.Flat, BackColor = Color.White, Font = btnFont };
+        _btnTestT.Click += (s, e) => TestAction(_comboTriple.SelectedItem?.ToString() ?? "Mute / Unmute Volume");
 
         grpMappings.Controls.Add(lblT);
         grpMappings.Controls.Add(_comboTriple);
-        grpMappings.Controls.Add(btnTestT);
+        grpMappings.Controls.Add(_btnTestT);
+
+        UpdateTestButtons();
 
         // Speed Window
         var lblSpeed = new Label { Text = "Double-Tap Window:", Location = new Point(16, 136), Size = new Size(130, 24), AutoSize = false, Font = regFont };
@@ -453,6 +458,40 @@ public class MainForm : Form
         _dispatcher.TripleTapAction = _comboTriple.SelectedItem?.ToString() ?? _dispatcher.TripleTapAction;
         _dispatcher.DoubleTapTimeoutSec = (float)_numSpeed.Value;
         _dispatcher.SaveSettings();
+        UpdateTestButtons();
+    }
+
+    private void UpdateTestButtons()
+    {
+        string actS = _comboSingle.SelectedItem?.ToString() ?? "";
+        _btnTestS.Text = GetTestButtonLabel(actS);
+        _btnTestS.Enabled = ActionDispatcher.IsActionConfigured(actS);
+
+        string actD = _comboDouble.SelectedItem?.ToString() ?? "";
+        _btnTestD.Text = GetTestButtonLabel(actD);
+        _btnTestD.Enabled = ActionDispatcher.IsActionConfigured(actD);
+
+        string actT = _comboTriple.SelectedItem?.ToString() ?? "";
+        _btnTestT.Text = GetTestButtonLabel(actT);
+        _btnTestT.Enabled = ActionDispatcher.IsActionConfigured(actT);
+    }
+
+    private static string GetTestButtonLabel(string? action)
+    {
+        if (string.IsNullOrWhiteSpace(action) || action.StartsWith("None", StringComparison.OrdinalIgnoreCase))
+            return "Test (None)";
+
+        switch (action)
+        {
+            case "Volume Up": return "Test Vol Up";
+            case "Volume Down": return "Test Vol Down";
+            case "Mute / Unmute Volume": return "Test Mute";
+            case "Play / Pause Media": return "Test Play/Pause";
+            case "Next Track": return "Test Next Track";
+            case "Previous Track": return "Test Prev Track";
+            case "Screenshot (PrintScreen)": return "Test Screenshot";
+            default: return $"Test {action}";
+        }
     }
 
     private void BtnPauseToggle_Click(object? sender, EventArgs e)
@@ -476,10 +515,7 @@ public class MainForm : Form
     protected override void OnResize(EventArgs e)
     {
         base.OnResize(e);
-        if (WindowState == FormWindowState.Minimized)
-        {
-            Hide();
-        }
+        // Do not call Hide() on minimize so the application stays visible in the Windows taskbar.
     }
 
     protected override void OnFormClosing(FormClosingEventArgs e)

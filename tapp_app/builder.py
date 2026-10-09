@@ -9,7 +9,7 @@ from pathlib import Path
 import shutil
 import subprocess
 import tempfile
-from typing import Optional, Tuple
+from typing import List, Optional, Tuple
 
 from .detector import DetectorConfig
 
@@ -139,45 +139,73 @@ def build_standalone_executable(cfg: Optional[DetectorConfig] = None, root_dir: 
     return True, str(dst_exe if dst_exe.exists() else src_exe)
 
 
+def get_desktop_directories() -> List[Path]:
+    """Identify all valid Desktop folders for the current Windows user."""
+    candidates: List[Path] = []
+
+    # 1. Windows Registry (User Shell Folders Desktop - authoritative)
+    try:
+        import winreg
+        with winreg.OpenKey(winreg.HKEY_CURRENT_USER, r"Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders") as key:
+            val, _ = winreg.QueryValueEx(key, "Desktop")
+            expanded = Path(os.path.expandvars(val)).resolve()
+            if expanded.exists() and expanded not in candidates:
+                candidates.append(expanded)
+    except Exception:
+        pass
+
+    # 2. OneDrive Desktop
+    onedrive_desktop = (Path.home() / "OneDrive" / "Desktop").resolve()
+    if onedrive_desktop.exists() and onedrive_desktop not in candidates:
+        candidates.append(onedrive_desktop)
+
+    # 3. Standard local Desktop
+    local_desktop = (Path.home() / "Desktop").resolve()
+    if local_desktop.exists() and local_desktop not in candidates:
+        candidates.append(local_desktop)
+
+    if not candidates:
+        candidates.append(local_desktop)
+    return candidates
+
+
 def create_desktop_shortcut(target_exe: str, shortcut_name: str = "Tapp.lnk") -> Tuple[bool, str]:
     """Create a Windows desktop shortcut pointing to the standalone tapp.exe."""
     target_path = Path(target_exe).resolve()
     if not target_path.exists():
         return False, f"Target executable not found: {target_path}"
 
-    # Determine Desktop path
-    desktop = Path.home() / "Desktop"
-    if not desktop.exists():
-        onedrive_desktop = Path.home() / "OneDrive" / "Desktop"
-        if onedrive_desktop.exists():
-            desktop = onedrive_desktop
-
-    shortcut_path = desktop / shortcut_name
     work_dir = target_path.parent
+    desktops = get_desktop_directories()
+    created_paths: List[Path] = []
 
-    # Use a temporary VBS script for zero-dependency shortcut creation
-    vbs_content = f"""Set w = WScript.CreateObject("WScript.Shell")
+    for desktop in desktops:
+        shortcut_path = desktop / shortcut_name
+        vbs_content = f"""Set w = WScript.CreateObject("WScript.Shell")
 Set s = w.CreateShortcut("{shortcut_path}")
 s.TargetPath = "{target_path}"
 s.WorkingDirectory = "{work_dir}"
 s.Description = "Tapp - Palm-Rest Tap Action Trigger"
 s.Save
 """
-    tmp_vbs = None
-    try:
-        with tempfile.NamedTemporaryFile("w", suffix=".vbs", delete=False, encoding="utf-8") as f:
-            f.write(vbs_content)
-            tmp_vbs = f.name
+        tmp_vbs = None
+        try:
+            with tempfile.NamedTemporaryFile("w", suffix=".vbs", delete=False, encoding="utf-8") as f:
+                f.write(vbs_content)
+                tmp_vbs = f.name
 
-        subprocess.run(["cscript", "//nologo", tmp_vbs], capture_output=True, check=True, timeout=10)
-        if shortcut_path.exists():
-            return True, str(shortcut_path)
-        return False, "Shortcut file was not created on Desktop."
-    except Exception as e:
-        return False, f"Error creating shortcut: {e}"
-    finally:
-        if tmp_vbs and os.path.exists(tmp_vbs):
-            try:
-                os.remove(tmp_vbs)
-            except Exception:
-                pass
+            subprocess.run(["cscript", "//nologo", tmp_vbs], capture_output=True, check=True, timeout=10)
+            if shortcut_path.exists():
+                created_paths.append(shortcut_path)
+        except Exception:
+            pass
+        finally:
+            if tmp_vbs and os.path.exists(tmp_vbs):
+                try:
+                    os.remove(tmp_vbs)
+                except Exception:
+                    pass
+
+    if created_paths:
+        return True, str(created_paths[0])
+    return False, "Shortcut file could not be created on Desktop."
