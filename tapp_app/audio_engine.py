@@ -228,6 +228,14 @@ class AudioCaptureEngine:
             except Exception:
                 pass
 
+    def read_recent_seconds(self, seconds: float) -> np.ndarray:
+        """Return the most recent `seconds` worth of audio from circular buffer."""
+        return self.ring_buffer.read_last(seconds)
+
+    def get_waveform_snapshot(self, duration_sec: float = 0.25) -> np.ndarray:
+        """Return recent audio samples suitable for oscilloscope rendering."""
+        return self.ring_buffer.read_last(duration_sec)
+
     def start(self, device_index: Optional[int] = None, sample_rate: Optional[int] = None) -> bool:
         """Start capturing audio on the given device and sample rate."""
         self.stop()

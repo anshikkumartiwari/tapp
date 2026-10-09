@@ -309,6 +309,15 @@ class TappAppGUI:
         self.wave_canvas = tk.Canvas(meter_card, bg=BG_COLOR, height=120, highlightthickness=1, highlightbackground=BORDER_COLOR)
         self.wave_canvas.pack(fill="both", expand=True, pady=(0, 4))
 
+        self.step0_status_lbl = tk.Label(
+            meter_card,
+            text="Microphone listening... Tap the palm rest or speak to test responsiveness.",
+            font=FONT_BODY,
+            bg=BG_COLOR,
+            fg=MUTED_FG,
+        )
+        self.step0_status_lbl.pack(anchor="w", pady=(2, 0))
+
         # Bottom Bar: Start Calibration
         bottom_bar = tk.Frame(pad, bg=BG_COLOR)
         bottom_bar.pack(fill="x", pady=6)
@@ -882,24 +891,36 @@ class TappAppGUI:
             return
         try:
             idx = int(sel.split(":")[0])
-            self.audio_engine.start(device_index=idx)
-        except Exception:
-            pass
+            ok = self.audio_engine.start(device_index=idx)
+            if not ok and hasattr(self, "status_lbl"):
+                self.status_lbl.config(text=f"Microphone error: {self.audio_engine.error_message}")
+            elif hasattr(self, "status_lbl"):
+                self.status_lbl.config(text=f"Listening on device [{idx}]. Audio active.")
+        except Exception as e:
+            if hasattr(self, "status_lbl"):
+                self.status_lbl.config(text=f"Error starting device: {e}")
         if hasattr(self, "btn_audio_toggle"):
-            self.btn_audio_toggle.config(text="Pause Audio")
+            self.btn_audio_toggle.config(text="Pause Audio" if self.audio_engine.is_running else "Resume Audio")
 
     def _toggle_audio_stream(self):
         if self.audio_engine.is_running:
             self.audio_engine.stop()
-            self.btn_audio_toggle.config(text="Resume Audio")
-            self.status_lbl.config(text="Audio capture paused.")
+            if hasattr(self, "btn_audio_toggle"):
+                self.btn_audio_toggle.config(text="Resume Audio")
+            if hasattr(self, "status_lbl"):
+                self.status_lbl.config(text="Audio capture paused.")
         else:
-            self.audio_engine.start()
-            self.btn_audio_toggle.config(text="Pause Audio")
-            self.status_lbl.config(text="Audio capture running.")
+            sel = self.device_combo.get() if hasattr(self, "device_combo") else ""
+            idx = int(sel.split(":")[0]) if ":" in sel else None
+            ok = self.audio_engine.start(device_index=idx)
+            if hasattr(self, "btn_audio_toggle"):
+                self.btn_audio_toggle.config(text="Pause Audio" if ok else "Resume Audio")
+            if hasattr(self, "status_lbl"):
+                self.status_lbl.config(text="Audio capture running." if ok else f"Audio start failed: {self.audio_engine.error_message}")
 
     def _on_audio_block(self, block: np.ndarray, current_sec: float):
-        if self.is_live_detecting:
+        # Process detector if in live detecting mode OR on Step 0 for test feedback
+        if self.is_live_detecting or self.current_step == 0:
             event = self.detector.process_block(block, current_sec)
             if event is not None:
                 self.ui_update_queue.put(("HIT", event))
@@ -1008,8 +1029,16 @@ class TappAppGUI:
         self.live_events.append(event)
 
         # High-contrast flash on banner
-        self.hit_banner.config(text=f"[ HIT DETECTED! (Confidence: {event.confidence:.0%}) ]", bg=HIGHLIGHT_BG, fg=HIGHLIGHT_FG)
-        self.root.after(450, self._reset_hit_banner)
+        if hasattr(self, "hit_banner"):
+            self.hit_banner.config(text=f"[ HIT DETECTED! (Confidence: {event.confidence:.0%}) ]", bg=HIGHLIGHT_BG, fg=HIGHLIGHT_FG)
+            self.root.after(450, self._reset_hit_banner)
+
+        if hasattr(self, "step0_status_lbl") and self.current_step == 0:
+            self.step0_status_lbl.config(
+                text=f"Palm-rest tap detected! (Peak: {event.peak_amplitude:.3f}, Conf: {event.confidence:.0%})",
+                fg=FG_COLOR,
+            )
+            self.root.after(1400, self._reset_step0_status)
 
         if hasattr(self, "action_manager"):
             self.action_manager.on_hit_detected()
@@ -1025,14 +1054,23 @@ class TappAppGUI:
             f"[{time_str}] HIT | Conf: {event.confidence:.0%} | Peak: {event.peak_amplitude:.3f} | "
             f"Hz: {event.spectral_centroid_hz:.0f} | Hi/Lo: {event.high_low_ratio:.2f} | Status: [PENDING REVIEW]"
         )
-        self.event_log_list.insert(tk.END, entry_line)
-        self.event_log_list.see(tk.END)
+        if hasattr(self, "event_log_list"):
+            self.event_log_list.insert(tk.END, entry_line)
+            self.event_log_list.see(tk.END)
+
+    def _reset_step0_status(self):
+        if hasattr(self, "step0_status_lbl") and self.current_step == 0:
+            self.step0_status_lbl.config(
+                text="Microphone listening... Tap the palm rest or speak to test responsiveness.",
+                fg=MUTED_FG,
+            )
 
     def _reset_hit_banner(self):
-        if not self.is_live_detecting:
-            self.hit_banner.config(text="[ IDLE - LISTENING FOR TAPS ]", bg=BG_COLOR, fg=FG_COLOR)
-        else:
-            self.hit_banner.config(text="[ LISTENING... WAITING FOR TAP ]", bg=BG_COLOR, fg=FG_COLOR)
+        if hasattr(self, "hit_banner"):
+            if not self.is_live_detecting:
+                self.hit_banner.config(text="[ IDLE - LISTENING FOR TAPS ]", bg=BG_COLOR, fg=FG_COLOR)
+            else:
+                self.hit_banner.config(text="[ LISTENING... WAITING FOR TAP ]", bg=BG_COLOR, fg=FG_COLOR)
 
     _on_knock_event = _on_hit_event
     _reset_knock_banner = _reset_hit_banner
@@ -1142,68 +1180,109 @@ class TappAppGUI:
                 break
 
         # Render VU Meter & Waveform on Step 0 if visible
-        if hasattr(self, "vu_canvas") and self.vu_canvas.winfo_ismapped():
-            pk = self.audio_engine.latest_peak
-            self.vu_canvas.delete("all")
-            w = self.vu_canvas.winfo_width()
-            h = self.vu_canvas.winfo_height()
-            bar_w = int(w * min(1.0, pk * 2.5))
-            if bar_w > 0:
-                self.vu_canvas.create_rectangle(0, 0, bar_w, h, fill=HIGHLIGHT_BG, outline="")
-            # Floor mark line
-            fl_x = int(w * min(1.0, self.detector.config.amplitude_floor * 2.5))
-            self.vu_canvas.create_line(fl_x, 0, fl_x, h, fill="#888888", width=2)
-            self.vu_label.config(text=f"Peak: {pk:.3f}")
+        try:
+            if self.current_step == 0:
+                if hasattr(self, "vu_canvas"):
+                    pk = self.audio_engine.latest_peak
+                    self.vu_canvas.delete("all")
+                    w = self.vu_canvas.winfo_width()
+                    h = self.vu_canvas.winfo_height()
+                    if w > 1 and h > 1:
+                        # Non-linear boost for clear visual presence
+                        meter_val = min(1.0, max(0.0, np.sqrt(pk * 4.0))) if pk > 0.0003 else 0.0
+                        bar_w = int(w * meter_val)
+                        if bar_w > 0:
+                            self.vu_canvas.create_rectangle(0, 0, bar_w, h, fill=HIGHLIGHT_BG, outline="")
+                        fl_val = min(1.0, max(0.0, np.sqrt(self.detector.config.amplitude_floor * 4.0)))
+                        fl_x = int(w * fl_val)
+                        self.vu_canvas.create_line(fl_x, 0, fl_x, h, fill="#888888", width=2)
+                    if hasattr(self, "vu_label"):
+                        self.vu_label.config(text=f"Peak: {pk:.3f}")
 
-        if hasattr(self, "wave_canvas") and self.wave_canvas.winfo_ismapped():
-            self._render_waveform(self.wave_canvas)
+                if hasattr(self, "wave_canvas"):
+                    self._render_waveform(self.wave_canvas)
+        except Exception:
+            pass
 
-        self.root.after(40, self._ui_poll_loop)
+        self.root.after(35, self._ui_poll_loop)
 
     def _render_waveform(self, canvas: tk.Canvas):
-        canvas.delete("all")
-        w = canvas.winfo_width()
-        h = canvas.winfo_height()
-        mid_y = h / 2.0
-        buf = self.audio_engine.get_waveform_snapshot()
-        if len(buf) < 2:
-            return
+        try:
+            canvas.delete("all")
+            w = canvas.winfo_width()
+            h = canvas.winfo_height()
+            if w <= 1 or h <= 1:
+                return
+            mid_y = h / 2.0
+            buf = self.audio_engine.get_waveform_snapshot(0.12)
+            if len(buf) < 2:
+                canvas.create_line(0, mid_y, w, mid_y, fill=LIGHT_BORDER, dash=(2, 2))
+                return
 
-        step = max(1, len(buf) // w)
-        sub = buf[::step]
-        points = []
-        for i, val in enumerate(sub):
-            x = (i / len(sub)) * w
-            y = mid_y - (val * (h * 0.45))
-            points.append(x)
-            points.append(y)
-
-        if len(points) >= 4:
-            canvas.create_line(points, fill=FG_COLOR, width=1)
-        canvas.create_line(0, mid_y, w, mid_y, fill=LIGHT_BORDER, dash=(2, 2))
-
-    def _render_dual_monitor(self, canvas: tk.Canvas, status_lbl: Optional[tk.Label] = None):
-        canvas.delete("all")
-        w = canvas.winfo_width()
-        h = canvas.winfo_height()
-        mid_y = h / 2.0
-        buf = self.audio_engine.get_waveform_snapshot()
-        if len(buf) >= 2:
             step = max(1, len(buf) // w)
             sub = buf[::step]
+            if len(sub) < 2:
+                canvas.create_line(0, mid_y, w, mid_y, fill=LIGHT_BORDER, dash=(2, 2))
+                return
+
+            max_amp = float(np.max(np.abs(sub)))
+            if max_amp < 0.005:
+                gain = 25.0
+            elif max_amp < 0.03:
+                gain = 10.0
+            elif max_amp < 0.10:
+                gain = 4.0
+            else:
+                gain = 1.8
+
             points = []
+            n_sub = len(sub)
             for i, val in enumerate(sub):
-                x = (i / len(sub)) * w
-                y = mid_y - (val * (h * 0.45))
+                x = (i / max(1, n_sub - 1)) * w
+                y = mid_y - (val * gain * (h * 0.44))
+                y = max(1.0, min(h - 1.0, y))
                 points.append(x)
                 points.append(y)
+
             if len(points) >= 4:
                 canvas.create_line(points, fill=FG_COLOR, width=1)
+            canvas.create_line(0, mid_y, w, mid_y, fill=LIGHT_BORDER, dash=(2, 2))
+        except Exception:
+            pass
 
-        if status_lbl is not None:
-            pk = self.audio_engine.latest_peak
-            cent = self.audio_engine.latest_centroid
-            status_lbl.config(text=f"Peak: {pk:.3f} | Centroid Frequency: {cent:.0f} Hz")
+    def _render_dual_monitor(self, canvas: tk.Canvas, status_lbl: Optional[tk.Label] = None):
+        try:
+            canvas.delete("all")
+            w = canvas.winfo_width()
+            h = canvas.winfo_height()
+            if w <= 1 or h <= 1:
+                return
+            mid_y = h / 2.0
+            buf = self.audio_engine.get_waveform_snapshot(0.12)
+            if len(buf) >= 2:
+                step = max(1, len(buf) // w)
+                sub = buf[::step]
+                if len(sub) >= 2:
+                    max_amp = float(np.max(np.abs(sub)))
+                    gain = 12.0 if max_amp < 0.03 else 2.0
+                    points = []
+                    n_sub = len(sub)
+                    for i, val in enumerate(sub):
+                        x = (i / max(1, n_sub - 1)) * w
+                        y = mid_y - (val * gain * (h * 0.44))
+                        y = max(1.0, min(h - 1.0, y))
+                        points.append(x)
+                        points.append(y)
+                    if len(points) >= 4:
+                        canvas.create_line(points, fill=FG_COLOR, width=1)
+                canvas.create_line(0, mid_y, w, mid_y, fill=LIGHT_BORDER, dash=(2, 2))
+
+            if status_lbl is not None:
+                pk = self.audio_engine.latest_peak
+                cent = self.audio_engine.latest_centroid
+                status_lbl.config(text=f"Peak: {pk:.3f} | Centroid Frequency: {cent:.0f} Hz")
+        except Exception:
+            pass
 
     def _build_status_bar(self):
         status_bar = tk.Frame(self.root, bg=BG_COLOR, bd=0, highlightthickness=1, highlightbackground=LIGHT_BORDER)
