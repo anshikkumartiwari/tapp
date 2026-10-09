@@ -47,8 +47,8 @@ public class MainForm : Form
     private void InitializeComponent()
     {
         Text = "Tapp - Tap Actions (Lenovo IdeaPad)";
-        Size = new Size(760, 640);
-        MinimumSize = new Size(680, 540);
+        Size = new Size(780, 680);
+        MinimumSize = new Size(720, 580);
         BackColor = Color.White;
         ForeColor = Color.Black;
         Font = new Font("Segoe UI", 9F, FontStyle.Regular);
@@ -112,19 +112,19 @@ public class MainForm : Form
         };
         Controls.Add(pnlContent);
 
+        // Build controls
         // 1. Big Visual Action Banner
         _banner = new Label
         {
             Text = "[ LISTENING FOR PALM-REST TAPS ]",
-            Font = new Font("Segoe UI", 14F, FontStyle.Bold),
+            Font = new Font("Segoe UI", 13F, FontStyle.Bold),
             TextAlign = ContentAlignment.MiddleCenter,
             BackColor = Color.White,
             ForeColor = Color.Black,
             BorderStyle = BorderStyle.FixedSingle,
             Dock = DockStyle.Top,
-            Height = 54
+            Height = 50
         };
-        pnlContent.Controls.Add(_banner);
 
         // 2. Control Row: Master Checkbox + Pause Button
         var pnlCtrl = new Panel
@@ -165,7 +165,6 @@ public class MainForm : Form
 
         pnlCtrl.Controls.Add(_chkEnable);
         pnlCtrl.Controls.Add(_btnPauseToggle);
-        pnlContent.Controls.Add(pnlCtrl);
 
         // 3. Live VU Meter Panel
         var pnlVu = new Panel
@@ -188,7 +187,7 @@ public class MainForm : Form
         _vuLabel = new Label
         {
             Location = new Point(510, 6),
-            Size = new Size(200, 18),
+            Size = new Size(220, 18),
             Font = new Font("Consolas", 8.5F),
             ForeColor = Color.Black,
             Text = "Peak: 0.000 / Floor: 0.185"
@@ -196,7 +195,6 @@ public class MainForm : Form
 
         pnlVu.Controls.Add(_vuPanel);
         pnlVu.Controls.Add(_vuLabel);
-        pnlContent.Controls.Add(pnlVu);
 
         // 4. Mappings GroupBox
         var grpMappings = new GroupBox
@@ -204,20 +202,23 @@ public class MainForm : Form
             Text = " Gesture Mappings & Settings ",
             Font = new Font("Segoe UI", 9.5F, FontStyle.Bold),
             Dock = DockStyle.Top,
-            Height = 150,
+            Height = 175,
             BackColor = Color.White,
             ForeColor = Color.Black,
-            Padding = new Padding(12, 8, 12, 8)
+            Padding = new Padding(12, 10, 12, 10)
         };
 
+        var regFont = new Font("Segoe UI", 9F, FontStyle.Regular);
+        var btnFont = new Font("Segoe UI", 8.5F, FontStyle.Regular);
+
         // Single Tap
-        var lblS = new Label { Text = "Single Tap:", Location = new Point(14, 25), Size = new Size(110, 22), AutoSize = false };
-        _comboSingle = new ComboBox { Location = new Point(126, 23), Size = new Size(220, 24), DropDownStyle = ComboBoxStyle.DropDownList };
+        var lblS = new Label { Text = "Single Tap:", Location = new Point(16, 32), Size = new Size(110, 24), AutoSize = false, Font = regFont };
+        _comboSingle = new ComboBox { Location = new Point(130, 30), Size = new Size(220, 24), DropDownStyle = ComboBoxStyle.DropDownList, Font = regFont };
         _comboSingle.Items.AddRange(ActionDispatcher.AvailableActions);
         _comboSingle.SelectedItem = _dispatcher.SingleTapAction;
         _comboSingle.SelectedIndexChanged += (s, e) => SaveMappingsFromUI();
 
-        var btnTestS = new Button { Text = "Test Vol Up", Location = new Point(356, 22), Size = new Size(115, 26), FlatStyle = FlatStyle.Flat, BackColor = Color.White };
+        var btnTestS = new Button { Text = "Test Vol Up", Location = new Point(360, 29), Size = new Size(115, 26), FlatStyle = FlatStyle.Flat, BackColor = Color.White, Font = btnFont };
         btnTestS.Click += (s, e) => TestAction(_comboSingle.SelectedItem?.ToString() ?? "Volume Up");
 
         grpMappings.Controls.Add(lblS);
@@ -225,13 +226,13 @@ public class MainForm : Form
         grpMappings.Controls.Add(btnTestS);
 
         // Double Tap
-        var lblD = new Label { Text = "Double Tap:", Location = new Point(14, 55), Size = new Size(110, 22), AutoSize = false };
-        _comboDouble = new ComboBox { Location = new Point(126, 53), Size = new Size(220, 24), DropDownStyle = ComboBoxStyle.DropDownList };
+        var lblD = new Label { Text = "Double Tap:", Location = new Point(16, 66), Size = new Size(110, 24), AutoSize = false, Font = regFont };
+        _comboDouble = new ComboBox { Location = new Point(130, 64), Size = new Size(220, 24), DropDownStyle = ComboBoxStyle.DropDownList, Font = regFont };
         _comboDouble.Items.AddRange(ActionDispatcher.AvailableActions);
         _comboDouble.SelectedItem = _dispatcher.DoubleTapAction;
         _comboDouble.SelectedIndexChanged += (s, e) => SaveMappingsFromUI();
 
-        var btnTestD = new Button { Text = "Test Vol Down", Location = new Point(356, 52), Size = new Size(115, 26), FlatStyle = FlatStyle.Flat, BackColor = Color.White };
+        var btnTestD = new Button { Text = "Test Vol Down", Location = new Point(360, 63), Size = new Size(115, 26), FlatStyle = FlatStyle.Flat, BackColor = Color.White, Font = btnFont };
         btnTestD.Click += (s, e) => TestAction(_comboDouble.SelectedItem?.ToString() ?? "Volume Down");
 
         grpMappings.Controls.Add(lblD);
@@ -239,13 +240,13 @@ public class MainForm : Form
         grpMappings.Controls.Add(btnTestD);
 
         // Triple Tap
-        var lblT = new Label { Text = "Triple Tap:", Location = new Point(14, 85), Size = new Size(110, 22), AutoSize = false };
-        _comboTriple = new ComboBox { Location = new Point(126, 83), Size = new Size(220, 24), DropDownStyle = ComboBoxStyle.DropDownList };
+        var lblT = new Label { Text = "Triple Tap:", Location = new Point(16, 100), Size = new Size(110, 24), AutoSize = false, Font = regFont };
+        _comboTriple = new ComboBox { Location = new Point(130, 98), Size = new Size(220, 24), DropDownStyle = ComboBoxStyle.DropDownList, Font = regFont };
         _comboTriple.Items.AddRange(ActionDispatcher.AvailableActions);
         _comboTriple.SelectedItem = _dispatcher.TripleTapAction;
         _comboTriple.SelectedIndexChanged += (s, e) => SaveMappingsFromUI();
 
-        var btnTestT = new Button { Text = "Test Mute", Location = new Point(356, 82), Size = new Size(115, 26), FlatStyle = FlatStyle.Flat, BackColor = Color.White };
+        var btnTestT = new Button { Text = "Test Mute", Location = new Point(360, 97), Size = new Size(115, 26), FlatStyle = FlatStyle.Flat, BackColor = Color.White, Font = btnFont };
         btnTestT.Click += (s, e) => TestAction(_comboTriple.SelectedItem?.ToString() ?? "Mute / Unmute Volume");
 
         grpMappings.Controls.Add(lblT);
@@ -253,26 +254,25 @@ public class MainForm : Form
         grpMappings.Controls.Add(btnTestT);
 
         // Speed Window
-        var lblSpeed = new Label { Text = "Double-Tap Window:", Location = new Point(14, 117), Size = new Size(130, 22), AutoSize = false, Font = new Font("Segoe UI", 9F) };
+        var lblSpeed = new Label { Text = "Double-Tap Window:", Location = new Point(16, 136), Size = new Size(130, 24), AutoSize = false, Font = regFont };
         _numSpeed = new NumericUpDown
         {
-            Location = new Point(146, 115),
+            Location = new Point(150, 134),
             Size = new Size(60, 24),
             DecimalPlaces = 2,
             Increment = 0.02M,
             Minimum = 0.20M,
             Maximum = 0.70M,
+            Font = regFont,
             Value = (decimal)_dispatcher.DoubleTapTimeoutSec
         };
         _numSpeed.ValueChanged += (s, e) => SaveMappingsFromUI();
 
-        var lblSec = new Label { Text = "seconds (Single tap waits window before firing; Double tap fires immediately)", Location = new Point(212, 117), Size = new Size(480, 22), ForeColor = Color.FromArgb(80, 80, 80), Font = new Font("Segoe UI", 8.5F) };
+        var lblSec = new Label { Text = "seconds (Single tap waits window before firing; Double tap fires immediately)", Location = new Point(220, 136), Size = new Size(480, 24), ForeColor = Color.FromArgb(80, 80, 80), Font = new Font("Segoe UI", 8.5F) };
 
         grpMappings.Controls.Add(lblSpeed);
         grpMappings.Controls.Add(_numSpeed);
         grpMappings.Controls.Add(lblSec);
-
-        pnlContent.Controls.Add(grpMappings);
 
         // 5. History Log
         var grpHistory = new GroupBox
@@ -315,7 +315,14 @@ public class MainForm : Form
 
         grpHistory.Controls.Add(btnClearHist);
         grpHistory.Controls.Add(_historyList);
+
+        // In Windows Forms, controls with Dock=Top are stacked in reverse of addition order.
+        // Adding them from bottom to top ensures the correct top-to-bottom layout without clipping.
         pnlContent.Controls.Add(grpHistory);
+        pnlContent.Controls.Add(grpMappings);
+        pnlContent.Controls.Add(pnlVu);
+        pnlContent.Controls.Add(pnlCtrl);
+        pnlContent.Controls.Add(_banner);
 
         // Timers
         _bannerTimer = new System.Windows.Forms.Timer { Interval = 700 };

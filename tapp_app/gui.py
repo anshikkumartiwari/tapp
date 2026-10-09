@@ -337,9 +337,18 @@ class TappAppGUI:
         self.vu_label = tk.Label(vu_row, text="Peak: 0.000", font=FONT_MONO, bg=BG_COLOR, fg=FG_COLOR, width=14)
         self.vu_label.pack(side="right")
 
-        # Rolling Waveform
-        self.wave_canvas = tk.Canvas(meter_card, bg=BG_COLOR, height=120, highlightthickness=1, highlightbackground=BORDER_COLOR)
+        # Rolling Waveform & Spectrum
+        self.wave_canvas = tk.Canvas(meter_card, bg=BG_COLOR, height=125, highlightthickness=1, highlightbackground=BORDER_COLOR)
         self.wave_canvas.pack(fill="both", expand=True, pady=(0, 4))
+
+        self.wave_freq_lbl = tk.Label(
+            meter_card,
+            text="Peak: 0.000 | Dominant Frequency: Idle | Centroid: 0 Hz | Ambient Room Sound",
+            font=FONT_MONO,
+            bg=BG_COLOR,
+            fg=FG_COLOR,
+        )
+        self.wave_freq_lbl.pack(anchor="w", pady=(2, 0))
 
         self.step0_status_lbl = tk.Label(
             meter_card,
@@ -1506,7 +1515,7 @@ class TappAppGUI:
             except queue.Empty:
                 break
 
-        # Render VU Meter & Waveform on Step 0 if visible
+        # Render Live Visualizers on Step 0 and Wizard Steps 1, 2, 3
         try:
             if self.current_step == 0:
                 if hasattr(self, "vu_canvas"):
@@ -1527,89 +1536,154 @@ class TappAppGUI:
                         self.vu_label.config(text=f"Peak: {pk:.3f}")
 
                 if hasattr(self, "wave_canvas"):
-                    self._render_waveform(self.wave_canvas)
+                    self._render_dual_waveform_and_spectrum(self.wave_canvas, getattr(self, "wave_freq_lbl", None))
+            elif self.current_step in (1, 2, 3):
+                if hasattr(self, "cal_canvas"):
+                    self._render_dual_waveform_and_spectrum(self.cal_canvas, getattr(self, "cal_freq_lbl", None))
         except Exception:
             pass
 
-        self.root.after(35, self._ui_poll_loop)
+        self.root.after(40, self._ui_poll_loop)
 
-    def _render_waveform(self, canvas: tk.Canvas):
+    def _render_dual_waveform_and_spectrum(self, canvas: tk.Canvas, status_lbl: Optional[tk.Label] = None):
+        """Render two smooth rolling time waveforms (Raw + Chassis Tap) and FFT Frequency Spectrum."""
         try:
             canvas.delete("all")
             w = canvas.winfo_width()
             h = canvas.winfo_height()
             if w <= 1 or h <= 1:
                 return
-            mid_y = h / 2.0
-            buf = self.audio_engine.get_waveform_snapshot(0.12)
-            if len(buf) < 2:
-                canvas.create_line(0, mid_y, w, mid_y, fill=LIGHT_BORDER, dash=(2, 2))
-                return
 
-            step = max(1, len(buf) // w)
-            sub = buf[::step]
-            if len(sub) < 2:
-                canvas.create_line(0, mid_y, w, mid_y, fill=LIGHT_BORDER, dash=(2, 2))
-                return
+            raw, chassis = self.audio_engine.get_dual_waveform_snapshot(0.70)
+            freqs, mag, dom_f, sc = self.audio_engine.get_spectrum_snapshot()
+            pk = self.audio_engine.latest_peak
 
-            max_amp = float(np.max(np.abs(sub)))
-            if max_amp < 0.005:
-                gain = 25.0
-            elif max_amp < 0.03:
-                gain = 10.0
-            elif max_amp < 0.10:
-                gain = 4.0
-            else:
-                gain = 1.8
+            # Layout: Left 64% is Oscilloscope (Dual Waves), Right 36% is Frequency Spectrum
+            osc_w = int(w * 0.64)
+            spec_x0 = osc_w + 2
+            spec_w = max(10, w - spec_x0 - 4)
 
-            points = []
-            n_sub = len(sub)
-            for i, val in enumerate(sub):
-                x = (i / max(1, n_sub - 1)) * w
-                y = mid_y - (val * gain * (h * 0.44))
-                y = max(1.0, min(h - 1.0, y))
-                points.append(x)
-                points.append(y)
+            # Center & division coordinates
+            mid_y1 = h * 0.25
+            mid_y2 = h * 0.75
+            track_div_y = int(h * 0.50)
 
-            if len(points) >= 4:
-                canvas.create_line(points, fill=FG_COLOR, width=1)
-            canvas.create_line(0, mid_y, w, mid_y, fill=LIGHT_BORDER, dash=(2, 2))
-        except Exception:
-            pass
+            # Vertical divider between Oscilloscope and Spectrum
+            canvas.create_line(osc_w, 0, osc_w, h, fill=LIGHT_BORDER, width=1)
 
-    def _render_dual_monitor(self, canvas: tk.Canvas, status_lbl: Optional[tk.Label] = None):
-        try:
-            canvas.delete("all")
-            w = canvas.winfo_width()
-            h = canvas.winfo_height()
-            if w <= 1 or h <= 1:
-                return
-            mid_y = h / 2.0
-            buf = self.audio_engine.get_waveform_snapshot(0.12)
-            if len(buf) >= 2:
-                step = max(1, len(buf) // w)
-                sub = buf[::step]
-                if len(sub) >= 2:
-                    max_amp = float(np.max(np.abs(sub)))
-                    gain = 12.0 if max_amp < 0.03 else 2.0
-                    points = []
-                    n_sub = len(sub)
-                    for i, val in enumerate(sub):
-                        x = (i / max(1, n_sub - 1)) * w
-                        y = mid_y - (val * gain * (h * 0.44))
-                        y = max(1.0, min(h - 1.0, y))
-                        points.append(x)
-                        points.append(y)
-                    if len(points) >= 4:
-                        canvas.create_line(points, fill=FG_COLOR, width=1)
-                canvas.create_line(0, mid_y, w, mid_y, fill=LIGHT_BORDER, dash=(2, 2))
+            # Horizontal divider between Wave 1 and Wave 2
+            canvas.create_line(0, track_div_y, osc_w, track_div_y, fill="#EEEEEE", dash=(2, 2))
 
+            # Dashed zero baselines for Wave 1 and Wave 2
+            canvas.create_line(0, mid_y1, osc_w, mid_y1, fill="#F2F2F2")
+            canvas.create_line(0, mid_y2, osc_w, mid_y2, fill="#F2F2F2")
+
+            # Track titles
+            canvas.create_text(8, 4, anchor="nw", text="WAVE 1: RAW MICROPHONE AUDIO", font=("Segoe UI", 7, "bold"), fill=MUTED_FG)
+            canvas.create_text(8, track_div_y + 4, anchor="nw", text="WAVE 2: CHASSIS TAP (<350 Hz)", font=("Segoe UI", 7, "bold"), fill=MUTED_FG)
+
+            # -------------------------------------------------------------
+            # Draw Rolling Time Waves (Wave 1 & Wave 2)
+            # -------------------------------------------------------------
+            n_raw = len(raw)
+            if n_raw >= 32 and osc_w > 10:
+                mx_raw = float(np.max(np.abs(raw)))
+                mx_ch = float(np.max(np.abs(chassis)))
+
+                gain1 = 30.0 if mx_raw < 0.005 else (12.0 if mx_raw < 0.03 else (4.5 if mx_raw < 0.12 else 1.8))
+                gain2 = 30.0 if mx_ch < 0.005 else (12.0 if mx_ch < 0.03 else (4.5 if mx_ch < 0.12 else 1.8))
+
+                amp_h1 = h * 0.22
+                amp_h2 = h * 0.22
+
+                pts1 = []
+                pts2 = []
+
+                for x in range(osc_w):
+                    s_idx = int(x * n_raw / osc_w)
+                    e_idx = min(n_raw, int((x + 1) * n_raw / osc_w) + 1)
+
+                    sub1 = raw[s_idx:e_idx]
+                    val1 = float(np.mean(sub1)) if len(sub1) > 0 else 0.0
+                    y1 = mid_y1 - (val1 * gain1 * amp_h1)
+                    y1 = max(2.0, min(track_div_y - 2.0, y1))
+                    pts1.extend([x, y1])
+
+                    sub2 = chassis[s_idx:e_idx]
+                    val2 = float(np.mean(sub2)) if len(sub2) > 0 else 0.0
+                    y2 = mid_y2 - (val2 * gain2 * amp_h2)
+                    y2 = max(track_div_y + 2.0, min(h - 2.0, y2))
+                    pts2.extend([x, y2])
+
+                if len(pts1) >= 4:
+                    canvas.create_line(pts1, fill=FG_COLOR, width=1)
+                if len(pts2) >= 4:
+                    canvas.create_line(pts2, fill=FG_COLOR, width=1.5)
+
+            # -------------------------------------------------------------
+            # Draw Frequency Spectrum (Right Section)
+            # -------------------------------------------------------------
+            canvas.create_text(spec_x0 + 6, 4, anchor="nw", text="SPECTRUM (0-2.5 kHz)", font=("Segoe UI", 7, "bold"), fill=MUTED_FG)
+
+            # Frequency grid marks: 250, 500, 1000, 2000 Hz
+            max_f = 2500.0
+            for grid_f, lbl in [(250, "250"), (500, "500"), (1000, "1k"), (2000, "2k")]:
+                gx = spec_x0 + int((grid_f / max_f) * spec_w)
+                if gx < w - 4:
+                    canvas.create_line(gx, 18, gx, h - 14, fill="#F2F2F2", dash=(1, 2))
+                    canvas.create_text(gx, h - 6, anchor="s", text=lbl, font=("Segoe UI", 6), fill="#999999")
+
+            # Spectrum curve
+            if len(freqs) > 0 and len(mag) > 0:
+                mask = freqs <= max_f
+                f_sub = freqs[mask]
+                m_sub = mag[mask]
+                mx_m = float(np.max(m_sub)) if len(m_sub) > 0 else 1.0
+                if mx_m < 1e-6:
+                    mx_m = 1.0
+
+                spec_pts = [spec_x0, h - 16]
+                for f_val, m_val in zip(f_sub, m_sub):
+                    sx = spec_x0 + (f_val / max_f) * spec_w
+                    sy = (h - 16) - (m_val / mx_m) * (h - 38)
+                    spec_pts.extend([sx, sy])
+                spec_pts.extend([spec_x0 + spec_w, h - 16])
+
+                if len(spec_pts) >= 4:
+                    canvas.create_line(spec_pts, fill=FG_COLOR, width=1.5)
+
+            # Dominant frequency cursor
+            if dom_f > 30 and dom_f <= max_f:
+                dom_x = spec_x0 + int((dom_f / max_f) * spec_w)
+                canvas.create_line(dom_x, 18, dom_x, h - 16, fill=FG_COLOR, width=1, dash=(2, 2))
+                canvas.create_text(dom_x, 14, anchor="s", text=f"{dom_f:.0f}Hz", font=("Segoe UI", 7, "bold"), fill=FG_COLOR)
+
+            # -------------------------------------------------------------
+            # Status / Readout Label
+            # -------------------------------------------------------------
             if status_lbl is not None:
-                pk = self.audio_engine.latest_peak
-                cent = self.audio_engine.latest_centroid
-                status_lbl.config(text=f"Peak: {pk:.3f} | Centroid Frequency: {cent:.0f} Hz")
+                if pk > 0.015:
+                    if dom_f < 380:
+                        band = "Chassis Tap Resonance"
+                    elif dom_f > 1400:
+                        band = "High Airborne / Typing Click"
+                    else:
+                        band = "Voice / Mid Acoustic"
+                    status_lbl.config(
+                        text=f"Peak: {pk:.3f} | Dominant Frequency: {dom_f:.0f} Hz | Centroid: {sc:.0f} Hz | Band: {band}",
+                        fg=FG_COLOR,
+                    )
+                else:
+                    status_lbl.config(
+                        text=f"Peak: {pk:.3f} | Dominant Frequency: Idle | Centroid: {sc:.0f} Hz | Ambient Room Sound",
+                        fg=MUTED_FG,
+                    )
         except Exception:
             pass
+
+    # Aliases for backward compatibility
+    _render_waveform = _render_dual_waveform_and_spectrum
+    _render_dual_monitor = _render_dual_waveform_and_spectrum
 
     def _build_status_bar(self):
         status_bar = tk.Frame(self.root, bg=BG_COLOR, bd=0, highlightthickness=1, highlightbackground=LIGHT_BORDER)

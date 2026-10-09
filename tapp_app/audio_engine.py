@@ -11,6 +11,7 @@ import time
 from typing import Callable, Dict, List, Optional, Tuple
 
 import numpy as np
+import scipy.signal
 import sounddevice as sd
 
 
@@ -162,6 +163,8 @@ class AudioCaptureEngine:
         self.latest_peak = 0.0
         self.latest_rms = 0.0
         self.latest_centroid = 0.0
+        self.latest_dominant_freq = 0.0
+        self.latest_mag = np.zeros(0, dtype=np.float32)
         self.level_history = deque(maxlen=200)  # rolling history of peak levels for visual plot
         self.centroid_history = deque(maxlen=200)  # rolling history of spectral centroid (Hz)
         self.is_running = False
@@ -200,18 +203,28 @@ class AudioCaptureEngine:
         self.latest_rms = rms
         self.level_history.append(pk)
 
-        # Real-time spectral centroid calculation
-        if pk > 0.005:
-            if self._window.size != mono.size:
-                self._window = np.hanning(mono.size).astype(np.float32)
-                self._freqs = np.fft.rfftfreq(mono.size, 1.0 / self.actual_sample_rate)
-            mag = np.abs(np.fft.rfft(mono * self._window))
-            smag = float(np.sum(mag))
-            sc = float(np.dot(self._freqs, mag) / (smag + 1e-9)) if smag > 1e-6 else 0.0
+        # Real-time spectral and frequency calculation
+        if self._window.size != mono.size:
+            self._window = np.hanning(mono.size).astype(np.float32)
+            self._freqs = np.fft.rfftfreq(mono.size, 1.0 / self.actual_sample_rate)
+
+        mag = np.abs(np.fft.rfft(mono * self._window))
+        self.latest_mag = mag
+        smag = float(np.sum(mag))
+
+        if pk > 0.003 and smag > 1e-6:
+            sc = float(np.dot(self._freqs, mag) / smag)
+            if len(mag) > 2:
+                peak_bin = int(np.argmax(mag[1:])) + 1
+                dom_f = float(self._freqs[peak_bin])
+            else:
+                dom_f = 0.0
             self.latest_centroid = sc
+            self.latest_dominant_freq = dom_f
             self.centroid_history.append(sc)
-        else:
+        elif pk <= 0.003:
             self.latest_centroid = 0.0
+            self.latest_dominant_freq = 0.0
             self.centroid_history.append(0.0)
 
         # Write to circular buffer
@@ -232,9 +245,29 @@ class AudioCaptureEngine:
         """Return the most recent `seconds` worth of audio from circular buffer."""
         return self.ring_buffer.read_last(seconds)
 
-    def get_waveform_snapshot(self, duration_sec: float = 0.25) -> np.ndarray:
+    def get_waveform_snapshot(self, duration_sec: float = 0.70) -> np.ndarray:
         """Return recent audio samples suitable for oscilloscope rendering."""
         return self.ring_buffer.read_last(duration_sec)
+
+    def get_dual_waveform_snapshot(self, duration_sec: float = 0.70) -> Tuple[np.ndarray, np.ndarray]:
+        """Return (raw_samples, chassis_lowpass_samples) for the recent duration."""
+        raw = self.ring_buffer.read_last(duration_sec)
+        if len(raw) < 32:
+            return raw, raw
+        try:
+            sos = scipy.signal.butter(2, 350, btype="low", fs=self.actual_sample_rate, output="sos")
+            chassis = scipy.signal.sosfilt(sos, raw)
+            return raw, chassis
+        except Exception:
+            return raw, raw
+
+    def get_spectrum_snapshot(self) -> Tuple[np.ndarray, np.ndarray, float, float]:
+        """Return (frequencies, magnitudes, dominant_freq, centroid)."""
+        freqs = getattr(self, "_freqs", np.zeros(0, dtype=np.float32))
+        mag = getattr(self, "latest_mag", np.zeros(0, dtype=np.float32))
+        dom_f = getattr(self, "latest_dominant_freq", 0.0)
+        sc = getattr(self, "latest_centroid", 0.0)
+        return freqs, mag, dom_f, sc
 
     def start(self, device_index: Optional[int] = None, sample_rate: Optional[int] = None) -> bool:
         """Start capturing audio on the given device and sample rate."""

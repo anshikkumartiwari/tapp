@@ -1,6 +1,6 @@
 # Hit Detection Experiment Report
 
-**Date:** 2026-10-10 01:30:37  
+**Date:** 2026-10-10 01:48:31  
 **Hardware Target:** Lenovo IdeaPad (Right-side palm-rest area near Lenovo logo)  
 **Microphone:** `Test Mic` (Host API: `MME`, Sample Rate: `16000 Hz`)  
 
@@ -58,4 +58,4 @@
    A 180 ms lockout period successfully eliminates double-counting from acoustic chassis ringing without impeding rapid double-taps.
 
 ---
-*Report generated automatically by Tapp Hit Test Suite on 2026-10-10 01:30:37*
+*Report generated automatically by Tapp Hit Test Suite on 2026-10-10 01:48:31*
