@@ -3,7 +3,7 @@ cd /d "%~dp0"
 setlocal enabledelayedexpansion
 
 echo ========================================================
-echo   TAPP — Palm-Rest Hit Detection Test App Setup
+echo   TAPP - Palm-Rest Tap Detection Setup
 echo ========================================================
 echo.
 
@@ -21,7 +21,7 @@ python --version
 
 REM 2. Install minimal dependencies
 echo.
-echo [*] Installing minimal dependencies (numpy, sounddevice, scipy)...
+echo [*] Installing dependencies (numpy, sounddevice, scipy)...
 python -m pip install -r requirements.txt
 if %ERRORLEVEL% neq 0 (
     echo [ERROR] Failed to install requirements.
@@ -39,10 +39,18 @@ if %ERRORLEVEL% neq 0 (
     exit /b 1
 )
 
+REM 4. Build initial standalone tapp.exe executable
+echo.
+echo [*] Building native tapp.exe executable...
+python -c "from tapp_app.builder import build_standalone_executable; ok, msg = build_standalone_executable(); print(msg)"
+
 echo.
 echo ========================================================
 echo   Setup completed successfully!
-echo   Launch the application anytime by running: run.bat
+echo.
+echo   Next steps:
+echo   1. Run run.bat to calibrate sensitivity and test accuracy.
+echo   2. Run tapp.bat (or double-click tapp.exe) for daily use.
 echo ========================================================
 echo.
 pause

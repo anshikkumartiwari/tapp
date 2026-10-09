@@ -1,7 +1,7 @@
 @echo off
 cd /d "%~dp0"
 echo ========================================================
-echo   Launching Tapp Hit Detection Test App...
+echo   Launching Tapp Calibration and Test Wizard...
 echo ========================================================
 echo.
 

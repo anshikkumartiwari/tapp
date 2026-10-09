@@ -52,7 +52,7 @@ class TappActionApp:
 
     def __init__(self, root: tk.Tk):
         self.root = root
-        self.root.title("Tapp — Tap Actions (Lenovo IdeaPad)")
+        self.root.title("Tapp - Tap Actions (Lenovo IdeaPad)")
         self.root.geometry("740x620")
         self.root.minsize(680, 540)
         self.root.configure(bg=BG_COLOR)
@@ -156,7 +156,7 @@ class TappActionApp:
 
         self.btn_pause_toggle = tk.Button(
             ctrl_frame,
-            text="⏸ Pause Listening",
+            text="Pause Listening",
             font=FONT_BODY,
             bg=BG_COLOR,
             fg=FG_COLOR,
@@ -171,7 +171,7 @@ class TappActionApp:
     def _build_action_mappings(self):
         card = tk.LabelFrame(
             self.root,
-            text=" Gesture Mappings & Sensitivity ",
+            text=" Gesture Mappings and Sensitivity ",
             font=FONT_HEADING,
             bg=BG_COLOR,
             fg=FG_COLOR,
@@ -185,7 +185,7 @@ class TappActionApp:
         # 1. Single Tap
         r1 = tk.Frame(card, bg=BG_COLOR)
         r1.pack(fill="x", pady=3)
-        tk.Label(r1, text="Single Tap ➔", font=FONT_HEADING, bg=BG_COLOR, fg=FG_COLOR, width=16, anchor="w").pack(side="left")
+        tk.Label(r1, text="Single Tap ->", font=FONT_HEADING, bg=BG_COLOR, fg=FG_COLOR, width=16, anchor="w").pack(side="left")
         self.combo_single = ttk.Combobox(r1, values=AVAILABLE_ACTIONS, font=FONT_BODY, state="readonly", width=26)
         self.combo_single.set(self.action_manager.settings.single_tap_action)
         self.combo_single.pack(side="left", padx=6)
@@ -193,7 +193,7 @@ class TappActionApp:
 
         tk.Button(
             r1,
-            text="🔊 Test Vol Up",
+            text="Test Vol Up",
             font=FONT_BODY,
             bg=BG_COLOR,
             fg=FG_COLOR,
@@ -207,7 +207,7 @@ class TappActionApp:
         # 2. Double Tap
         r2 = tk.Frame(card, bg=BG_COLOR)
         r2.pack(fill="x", pady=3)
-        tk.Label(r2, text="Double Tap ➔", font=FONT_HEADING, bg=BG_COLOR, fg=FG_COLOR, width=16, anchor="w").pack(side="left")
+        tk.Label(r2, text="Double Tap ->", font=FONT_HEADING, bg=BG_COLOR, fg=FG_COLOR, width=16, anchor="w").pack(side="left")
         self.combo_double = ttk.Combobox(r2, values=AVAILABLE_ACTIONS, font=FONT_BODY, state="readonly", width=26)
         self.combo_double.set(self.action_manager.settings.double_tap_action)
         self.combo_double.pack(side="left", padx=6)
@@ -215,7 +215,7 @@ class TappActionApp:
 
         tk.Button(
             r2,
-            text="🔉 Test Vol Down",
+            text="Test Vol Down",
             font=FONT_BODY,
             bg=BG_COLOR,
             fg=FG_COLOR,
@@ -229,7 +229,7 @@ class TappActionApp:
         # 3. Triple Tap
         r3 = tk.Frame(card, bg=BG_COLOR)
         r3.pack(fill="x", pady=3)
-        tk.Label(r3, text="Triple Tap ➔", font=FONT_HEADING, bg=BG_COLOR, fg=FG_COLOR, width=16, anchor="w").pack(side="left")
+        tk.Label(r3, text="Triple Tap ->", font=FONT_HEADING, bg=BG_COLOR, fg=FG_COLOR, width=16, anchor="w").pack(side="left")
         self.combo_triple = ttk.Combobox(r3, values=AVAILABLE_ACTIONS, font=FONT_BODY, state="readonly", width=26)
         self.combo_triple.set(self.action_manager.settings.triple_tap_action)
         self.combo_triple.pack(side="left", padx=6)
@@ -237,7 +237,7 @@ class TappActionApp:
 
         tk.Button(
             r3,
-            text="🔇 Test Mute",
+            text="Test Mute",
             font=FONT_BODY,
             bg=BG_COLOR,
             fg=FG_COLOR,
@@ -263,7 +263,7 @@ class TappActionApp:
 
         tk.Button(
             r4,
-            text="💾 Save Preferences",
+            text="Save Preferences",
             font=FONT_HEADING,
             bg=BG_COLOR,
             fg=FG_COLOR,
@@ -340,12 +340,12 @@ class TappActionApp:
     def _toggle_listening(self):
         if self.audio_engine.is_running:
             self.audio_engine.stop()
-            self.btn_pause_toggle.config(text="▶ Resume Listening")
-            self.action_banner.config(text="[ PAUSED — NOT LISTENING ]", bg=BG_COLOR, fg=MUTED_FG)
+            self.btn_pause_toggle.config(text="Resume Listening")
+            self.action_banner.config(text="[ PAUSED - NOT LISTENING ]", bg=BG_COLOR, fg=MUTED_FG)
             self.status_lbl.config(text="Audio stream paused.")
         else:
             self._start_listening()
-            self.btn_pause_toggle.config(text="⏸ Pause Listening")
+            self.btn_pause_toggle.config(text="Pause Listening")
             self.action_banner.config(text="[ LISTENING FOR PALM-REST TAPS ]", bg=BG_COLOR, fg=FG_COLOR)
             self.status_lbl.config(text="Listening for palm-rest taps...")
 
@@ -361,7 +361,7 @@ class TappActionApp:
         execute_action(action_name)
         now_str = time.strftime("%H:%M:%S")
         self.serial_counter += 1
-        log_line = f"#{self.serial_counter:02d} [{now_str}] 🧪 TEST TRIGGER ➔ Executed: {action_name}"
+        log_line = f"#{self.serial_counter:02d} [{now_str}] [TEST TRIGGER] Executed: {action_name}"
         self.log_list.insert(tk.END, log_line)
         self.log_list.see(tk.END)
         self.status_lbl.config(text=f"Test executed: {action_name}")
@@ -384,10 +384,10 @@ class TappActionApp:
         messagebox.showinfo(
             "Saved",
             "Action settings saved to data/actions_config.json:\n\n"
-            f"• Single Tap: {self.action_manager.settings.single_tap_action}\n"
-            f"• Double Tap: {self.action_manager.settings.double_tap_action}\n"
-            f"• Triple Tap: {self.action_manager.settings.triple_tap_action}\n"
-            f"• Speed Window: {self.action_manager.settings.double_tap_timeout_sec}s",
+            f"- Single Tap: {self.action_manager.settings.single_tap_action}\n"
+            f"- Double Tap: {self.action_manager.settings.double_tap_action}\n"
+            f"- Triple Tap: {self.action_manager.settings.triple_tap_action}\n"
+            f"- Speed Window: {self.action_manager.settings.double_tap_timeout_sec}s",
         )
 
     def _ui_poll_loop(self):
@@ -396,17 +396,17 @@ class TappActionApp:
                 gesture, action = self.ui_queue.get_nowait()
                 self.serial_counter += 1
                 now_str = time.strftime("%H:%M:%S")
-                log_line = f"#{self.serial_counter:02d} [{now_str}] ⚡ {gesture.upper()} ➔ Dispatched: {action}"
+                log_line = f"#{self.serial_counter:02d} [{now_str}] [{gesture.upper()}] Dispatched: {action}"
                 self.log_list.insert(tk.END, log_line)
                 self.log_list.see(tk.END)
 
                 self.action_banner.config(
-                    text=f"⚡ {gesture.upper()} ➔ {action}",
+                    text=f"[{gesture.upper()}] -> {action}",
                     bg=HIGHLIGHT_BG,
                     fg=HIGHLIGHT_FG,
                 )
                 self.root.after(750, self._reset_action_banner)
-                self.status_lbl.config(text=f"Executed: {gesture} ➔ {action}")
+                self.status_lbl.config(text=f"Executed: {gesture} -> {action}")
             except queue.Empty:
                 break
 
@@ -416,7 +416,7 @@ class TappActionApp:
         if self.audio_engine.is_running:
             self.action_banner.config(text="[ LISTENING FOR PALM-REST TAPS ]", bg=BG_COLOR, fg=FG_COLOR)
         else:
-            self.action_banner.config(text="[ PAUSED — NOT LISTENING ]", bg=BG_COLOR, fg=MUTED_FG)
+            self.action_banner.config(text="[ PAUSED - NOT LISTENING ]", bg=BG_COLOR, fg=MUTED_FG)
 
     def _on_close(self):
         self.audio_engine.stop()

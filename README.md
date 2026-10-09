@@ -6,48 +6,35 @@ Tapp detects deliberate mechanical taps on your laptop's palm-rest chassis area 
 
 ---
 
-## How to Run
+## Quick Start (3 Steps)
 
-### 1. Setup
-
-Run the setup script to install dependencies (`numpy`, `sounddevice`, `scipy`):
-
+### Step 1: One-Time Setup
+Run the setup script to install dependencies, run self-tests, and build the native executable:
 ```cmd
 setup.bat
 ```
 
-*Or install manually via pip:*
+### Step 2: Calibrate Your Laptop
+Run the guided 5-step wizard to tune microphone sensitivity for your specific chassis and room acoustics:
 ```cmd
-pip install -r requirements.txt
+run.bat
 ```
+- Step 1: Check microphone and live oscilloscope
+- Step 2: Sample room background noise (10s)
+- Step 3: Record ~30 deliberate palm-rest taps
+- Step 4: Sample typing and trackpad clicks for rejection (30s)
+- Step 5: Save calibration and click **[Build Standalone tapp.exe]** (with 1-click Desktop shortcut)
+
+### Step 3: Daily Use (Lightweight Background Runner)
+Run the lightweight native app anytime:
+```cmd
+tapp.bat
+```
+*(or double-click `tapp.exe` directly on your Desktop / taskbar)*
 
 ---
 
-### 2. Launch
-
-You can launch Tapp in any of three ways:
-
-* **Full Test & Calibration Suite** (GUI for device selection, calibration, and live accuracy testing):
-  ```cmd
-  run.bat
-  ```
-  *(or `python main.py`)*
-
-* **Dedicated Tap Action Companion** (Compact background utility for gesture execution):
-  ```cmd
-  run_actions.bat
-  ```
-  *(or `python action_app.py`)*
-
-* **Native C# / .NET 8 Standalone App** (Zero-Python native build with minimal RAM & low latency):
-  ```cmd
-  run_native_actions.bat
-  ```
-  *(or `dotnet run --project TappActionApp\TappActionApp.csproj -c Release`)*
-
----
-
-## Default Gestures & Actions
+## Default Gestures and Actions
 
 | Gesture | Default Action |
 | :--- | :--- |
@@ -55,4 +42,4 @@ You can launch Tapp in any of three ways:
 | **Double Tap** | Volume Down |
 | **Triple Tap** | Mute / Unmute Volume |
 
-*Actions and sensitivity thresholds can be customized directly in the app or via `data/actions_config.json`.*
+*Actions and sensitivity thresholds can be customized in the app or via `data/actions_config.json`.*

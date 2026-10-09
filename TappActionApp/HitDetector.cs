@@ -11,17 +11,17 @@ namespace TappActionApp;
 /// </summary>
 public class HitDetector
 {
-    public float AmplitudeFloor { get; set; } = 0.185f;          // Tuned threshold from live ground truth
-    public float AttackRatioThreshold { get; set; } = 2.2f;
-    public float CentroidMaxHz { get; set; } = 3200.0f;
-    public float HighLowRatioMax { get; set; } = 0.585f;
-    public float RefractorySec { get; set; } = 0.18f;
-    public float MinConfidence { get; set; } = 0.55f;
+    public float AmplitudeFloor { get; set; } = CalibratedProfile.AmplitudeFloor;
+    public float AttackRatioThreshold { get; set; } = CalibratedProfile.AttackRatioThreshold;
+    public float CentroidMaxHz { get; set; } = CalibratedProfile.CentroidMaxHz;
+    public float HighLowRatioMax { get; set; } = CalibratedProfile.HighLowRatioMax;
+    public float RefractorySec { get; set; } = CalibratedProfile.RefractorySec;
+    public float MinConfidence { get; set; } = CalibratedProfile.MinConfidence;
+    public float ClassifierBias { get; set; } = CalibratedProfile.ClassifierBias;
 
-    public float[]? ClassifierWeights { get; set; }
-    public float ClassifierBias { get; set; } = 0.0f;
-    public float[]? FeatureMeans { get; set; }
-    public float[]? FeatureScales { get; set; }
+    public float[]? ClassifierWeights { get; set; } = CalibratedProfile.ClassifierWeights;
+    public float[]? FeatureMeans { get; set; } = CalibratedProfile.FeatureMeans;
+    public float[]? FeatureScales { get; set; } = CalibratedProfile.FeatureScales;
 
     private readonly DspEngine _dsp;
     private float _trailingEma = 0.0f;

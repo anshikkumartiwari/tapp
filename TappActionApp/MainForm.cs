@@ -46,7 +46,7 @@ public class MainForm : Form
 
     private void InitializeComponent()
     {
-        Text = "Tapp — Tap Actions (Lenovo IdeaPad)";
+        Text = "Tapp - Tap Actions (Lenovo IdeaPad)";
         Size = new Size(760, 640);
         MinimumSize = new Size(680, 540);
         BackColor = Color.White;
@@ -152,7 +152,7 @@ public class MainForm : Form
 
         _btnPauseToggle = new Button
         {
-            Text = "⏸ Pause Listening",
+            Text = "Pause Listening",
             Font = new Font("Segoe UI", 9F, FontStyle.Regular),
             FlatStyle = FlatStyle.Flat,
             BackColor = Color.White,
@@ -211,13 +211,13 @@ public class MainForm : Form
         };
 
         // Single Tap
-        var lblS = new Label { Text = "Single Tap ➔", Location = new Point(14, 25), Size = new Size(110, 22), AutoSize = false };
+        var lblS = new Label { Text = "Single Tap:", Location = new Point(14, 25), Size = new Size(110, 22), AutoSize = false };
         _comboSingle = new ComboBox { Location = new Point(126, 23), Size = new Size(220, 24), DropDownStyle = ComboBoxStyle.DropDownList };
         _comboSingle.Items.AddRange(ActionDispatcher.AvailableActions);
         _comboSingle.SelectedItem = _dispatcher.SingleTapAction;
         _comboSingle.SelectedIndexChanged += (s, e) => SaveMappingsFromUI();
 
-        var btnTestS = new Button { Text = "🔊 Test Vol Up", Location = new Point(356, 22), Size = new Size(115, 26), FlatStyle = FlatStyle.Flat, BackColor = Color.White };
+        var btnTestS = new Button { Text = "Test Vol Up", Location = new Point(356, 22), Size = new Size(115, 26), FlatStyle = FlatStyle.Flat, BackColor = Color.White };
         btnTestS.Click += (s, e) => TestAction(_comboSingle.SelectedItem?.ToString() ?? "Volume Up");
 
         grpMappings.Controls.Add(lblS);
@@ -225,13 +225,13 @@ public class MainForm : Form
         grpMappings.Controls.Add(btnTestS);
 
         // Double Tap
-        var lblD = new Label { Text = "Double Tap ➔", Location = new Point(14, 55), Size = new Size(110, 22), AutoSize = false };
+        var lblD = new Label { Text = "Double Tap:", Location = new Point(14, 55), Size = new Size(110, 22), AutoSize = false };
         _comboDouble = new ComboBox { Location = new Point(126, 53), Size = new Size(220, 24), DropDownStyle = ComboBoxStyle.DropDownList };
         _comboDouble.Items.AddRange(ActionDispatcher.AvailableActions);
         _comboDouble.SelectedItem = _dispatcher.DoubleTapAction;
         _comboDouble.SelectedIndexChanged += (s, e) => SaveMappingsFromUI();
 
-        var btnTestD = new Button { Text = "🔉 Test Vol Down", Location = new Point(356, 52), Size = new Size(115, 26), FlatStyle = FlatStyle.Flat, BackColor = Color.White };
+        var btnTestD = new Button { Text = "Test Vol Down", Location = new Point(356, 52), Size = new Size(115, 26), FlatStyle = FlatStyle.Flat, BackColor = Color.White };
         btnTestD.Click += (s, e) => TestAction(_comboDouble.SelectedItem?.ToString() ?? "Volume Down");
 
         grpMappings.Controls.Add(lblD);
@@ -239,13 +239,13 @@ public class MainForm : Form
         grpMappings.Controls.Add(btnTestD);
 
         // Triple Tap
-        var lblT = new Label { Text = "Triple Tap ➔", Location = new Point(14, 85), Size = new Size(110, 22), AutoSize = false };
+        var lblT = new Label { Text = "Triple Tap:", Location = new Point(14, 85), Size = new Size(110, 22), AutoSize = false };
         _comboTriple = new ComboBox { Location = new Point(126, 83), Size = new Size(220, 24), DropDownStyle = ComboBoxStyle.DropDownList };
         _comboTriple.Items.AddRange(ActionDispatcher.AvailableActions);
         _comboTriple.SelectedItem = _dispatcher.TripleTapAction;
         _comboTriple.SelectedIndexChanged += (s, e) => SaveMappingsFromUI();
 
-        var btnTestT = new Button { Text = "🔇 Test Mute", Location = new Point(356, 82), Size = new Size(115, 26), FlatStyle = FlatStyle.Flat, BackColor = Color.White };
+        var btnTestT = new Button { Text = "Test Mute", Location = new Point(356, 82), Size = new Size(115, 26), FlatStyle = FlatStyle.Flat, BackColor = Color.White };
         btnTestT.Click += (s, e) => TestAction(_comboTriple.SelectedItem?.ToString() ?? "Mute / Unmute Volume");
 
         grpMappings.Controls.Add(lblT);
@@ -324,7 +324,7 @@ public class MainForm : Form
             _bannerTimer.Stop();
             _banner.BackColor = Color.White;
             _banner.ForeColor = Color.Black;
-            _banner.Text = _audio.IsRecording ? "[ LISTENING FOR PALM-REST TAPS ]" : "[ PAUSED — NOT LISTENING ]";
+            _banner.Text = _audio.IsRecording ? "[ LISTENING FOR PALM-REST TAPS ]" : "[ PAUSED - NOT LISTENING ]";
         };
 
         _uiRefreshTimer = new System.Windows.Forms.Timer { Interval = 40 };
@@ -403,7 +403,7 @@ public class MainForm : Form
 
         var item = new ListViewItem($"#{_serialCounter:D2}");
         item.SubItems.Add(timeStr);
-        item.SubItems.Add($"⚡ {gesture.ToUpper()}");
+        item.SubItems.Add(gesture.ToUpper());
         item.SubItems.Add(action);
         _historyList.Items.Add(item);
         item.EnsureVisible();
@@ -412,14 +412,14 @@ public class MainForm : Form
         _bannerTimer.Stop();
         _banner.BackColor = Color.Black;
         _banner.ForeColor = Color.White;
-        _banner.Text = $"⚡ {gesture.ToUpper()} ➔ {action}";
+        _banner.Text = $"{gesture.ToUpper()} -> {action}";
         _bannerTimer.Start();
 
-        _statusLabel.Text = $"Executed: {gesture} ➔ {action} @ {timeStr}";
+        _statusLabel.Text = $"Executed: {gesture} -> {action} @ {timeStr}";
 
         if (WindowState == FormWindowState.Minimized)
         {
-            _trayIcon.ShowBalloonTip(1200, "Tapp Action", $"{gesture} ➔ {action}", ToolTipIcon.Info);
+            _trayIcon.ShowBalloonTip(1200, "Tapp Action", $"{gesture} -> {action}", ToolTipIcon.Info);
         }
     }
 
@@ -431,7 +431,7 @@ public class MainForm : Form
 
         var item = new ListViewItem($"#{_serialCounter:D2}");
         item.SubItems.Add(timeStr);
-        item.SubItems.Add("🧪 TEST TRIGGER");
+        item.SubItems.Add("[TEST] TRIGGER");
         item.SubItems.Add(action);
         _historyList.Items.Add(item);
         item.EnsureVisible();
@@ -453,14 +453,14 @@ public class MainForm : Form
         if (_audio.IsRecording)
         {
             _audio.Stop();
-            _btnPauseToggle.Text = "▶ Resume Listening";
-            _banner.Text = "[ PAUSED — NOT LISTENING ]";
+            _btnPauseToggle.Text = "Resume Listening";
+            _banner.Text = "[ PAUSED - NOT LISTENING ]";
             _statusLabel.Text = "Audio stream paused.";
         }
         else
         {
             _audio.Start();
-            _btnPauseToggle.Text = "⏸ Pause Listening";
+            _btnPauseToggle.Text = "Pause Listening";
             _banner.Text = "[ LISTENING FOR PALM-REST TAPS ]";
             _statusLabel.Text = "Listening for palm-rest taps...";
         }
